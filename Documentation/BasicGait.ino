@@ -1,3 +1,5 @@
+
+
 //StartPositions() MUST be called in setup or to run once prior to gait beginning
 void startPositions() {
   inverseKinematics(tri1,-20,75,-95,60);
