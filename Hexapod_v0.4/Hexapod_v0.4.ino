@@ -31,6 +31,7 @@ float L1_fk;
 float L2_fk;
 float theta1;
 float theta2;
+float theta3;
 float x;
 float y;
 float z;
@@ -58,8 +59,8 @@ float strideLift = 0;
 
 void setup() {
   Serial.begin(115200);
-  
-  //Assign pins to servos -- these all need to shift up by 2 when integrated with Ralph v1.0 control board
+
+  //Assign pins to servos -- to be switched to run over I2C (pins 2, 3) when integrated with Ralph V2 mainboard
   int i1 = 3;
   int i2 = 6;
   int i3 = 9;
@@ -86,51 +87,50 @@ void setup() {
     delay(250);
     Serial.println("Attaching joints");
   }
-/* //Set to home positions
-  setSpeedForAllServos(20);
+  /* //Set to home positions
+    setSpeedForAllServos(20);
 
-  legFL[0].setEaseTo(90);
-  legFL[1].setEaseTo(90);
-  legFL[2].setEaseTo(40);
+    legFL[0].setEaseTo(90);
+    legFL[1].setEaseTo(90);
+    legFL[2].setEaseTo(40);
 
-  legFR[0].setEaseTo(90);
-  legFR[1].setEaseTo(90);
-  legFR[2].setEaseTo(140);
+    legFR[0].setEaseTo(90);
+    legFR[1].setEaseTo(90);
+    legFR[2].setEaseTo(140);
 
-  legML[0].setEaseTo(90);
-  legML[1].setEaseTo(90);
-  legML[2].setEaseTo(40);
+    legML[0].setEaseTo(90);
+    legML[1].setEaseTo(90);
+    legML[2].setEaseTo(40);
 
-  legMR[0].setEaseTo(90);
-  legMR[1].setEaseTo(90);
-  legMR[2].setEaseTo(140);
+    legMR[0].setEaseTo(90);
+    legMR[1].setEaseTo(90);
+    legMR[2].setEaseTo(140);
 
-  legRL[0].setEaseTo(90);
-  legRL[1].setEaseTo(90);
-  legRL[2].setEaseTo(40);
+    legRL[0].setEaseTo(90);
+    legRL[1].setEaseTo(90);
+    legRL[2].setEaseTo(40);
 
-  legRR[0].setEaseTo(90);
-  legRR[1].setEaseTo(90);
-  legRR[2].setEaseTo(140);
+    legRR[0].setEaseTo(90);
+    legRR[1].setEaseTo(90);
+    legRR[2].setEaseTo(140);
 
-  synchronizeAllServosStartAndWaitForAllServosToStop();
-  delay(500000);
-*/
+    synchronizeAllServosStartAndWaitForAllServosToStop();
+    delay(500000);
+  */
   startPositions();
 }
 
 
 void loop() {
-  
+
   int legNumber;
-  float x, y, z;
   String input;
 
   Serial.println("Enter the leg number (1-6):");
   while (!Serial.available());
   input = Serial.readStringUntil('\n');
   legNumber = input.toInt();
-  legNumber--;  // adjust to 0-based indexing for the enum
+  legNumber--;
 
   Serial.println("Enter the x coordinate:");
   while (!Serial.available());
@@ -150,21 +150,21 @@ void loop() {
   Serial.println(String(x) + ", " + String(y) + ", " + String(z));
 
   inverseKinematics((Leg)legNumber, x, y, z, 100, false);
-  
+
   /*for (int i = 0; i<5; i++){
     triWalk(25,100,-105,100);
     }
-  for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 5; i++) {
     triWalk2(25, 0, 60, 100);
-    
-  }*/
+
+    }*/
 }
 
 
 
 void inverseKinematics(Leg legNumber, float x, float y, float z, float velocity, bool interrupt) {
   float q1 = atan2(y, x);
-  
+
   float coxa = l1 * cos(q1);  // adjusted length of coxa based on base angle, gets shorter as it turns
   float d = sqrt((x * x) + (y * y)) - coxa;
   float lc = sqrt((d * d) + ((z - l1) * (z - l1)));
@@ -174,7 +174,7 @@ void inverseKinematics(Leg legNumber, float x, float y, float z, float velocity,
   float q2 = PI - alpha - beta;
   float q3 = acos(((l2 * l2) + (l3 * l3) - (lc * lc)) / (2 * l2 * l3));
 
-  q1 = q1 * 180 / PI;  // convert to degrees
+  q1 = q1 * 180 / PI;
   q2 = q2 * 180 / PI;
   q3 = q3 * 180 / PI;
 
@@ -190,7 +190,7 @@ void inverseKinematics(Leg legNumber, float x, float y, float z, float velocity,
     Serial.println("q3 nan - skipping");
     return;
   }
-//Invereted? It works..
+  //Inverted, but it works..
   if (q2 >= 90) {
     q2 = map(q2, 90, 180, 0, 90);
   }
@@ -400,51 +400,49 @@ void triWalk(float strideLength, float strideWidth, float strideLift, float velo
 void triWalk2(float strideLength, float stance, float groundTarget, float velocity) {
 
   float liftClearance = 75;
-  
-  // Front leg positions
-//lift leg, drop away from body along y axis and toward center body along x, drag back toward body and out to the side
-float frontLiftX = strideLength/2;
-float frontLiftY = stance;
 
-float frontDropX = strideLength/2;
-float frontDropY = stance + (strideLength/2);
+  //Front leg positions
+  //Lift leg, drop away from body along y axis and toward center body along x, drag back toward body and out to the side
+  float frontLiftX = strideLength / 2;
+  float frontLiftY = stance;
 
-float frontMoveX = (strideLength/2) - strideLength;
-float frontMoveY = stance - (strideLength/2);
+  float frontDropX = strideLength / 2;
+  float frontDropY = stance + (strideLength / 2);
+
+  float frontMoveX = (strideLength / 2) - strideLength;
+  float frontMoveY = stance - (strideLength / 2);
 
 
   //Mid leg positions
-  //lift leg forward, drop and drag backwards all along x axis
+  //Lift leg forward, drop and drag backwards all along x axis
+  float midLiftX = (strideLength / 2) - (strideLength / 2) + 5;
+  float midLiftY = stance;
 
-float midLiftX = (strideLength / 2) - (strideLength / 2) + 5;
-float midLiftY = stance;
+  float midDropX = strideLength / 2;
+  float midDropY = stance;
 
-float midDropX = strideLength / 2;
-float midDropY = stance;
-
-float midMoveX = (strideLength / 2) - strideLength;
-float midMoveY = stance;
+  float midMoveX = (strideLength / 2) - strideLength;
+  float midMoveY = stance;
 
   float Back = (strideLength / 2) - strideLength;
   float Mid = (strideLength / 2) - (strideLength / 2) + 5;
   float Forw = strideLength / 2;
 
-  //rear leg positions
-  //lift leg, drop toward body along y axis and away/forward from center body along x axis, drag back along x axis and push with y axis
-
+  //Rear leg positions
+  //Lift leg, drop toward body along y axis and away/forward from center body along x axis, drag back along x axis and push with y axis
   float rearLiftX = -frontLiftX;
   float rearLiftY = stance;
 
   float rearDropX = -frontDropX;
-  float rearDropY = stance - (strideLength/2);
+  float rearDropY = stance - (strideLength / 2);
 
   float rearMoveX = -frontMoveX;
-  float rearMoveY = stance + (strideLength/2);
+  float rearMoveY = stance + (strideLength / 2);
 
-//Move the legs in loop
-Leg ld1, ld2, ld3, bm1, bm2, bm3;
+  //Move the legs in loop
+  Leg ld1, ld2, ld3, bm1, bm2, bm3;
 
-  for (int i = 0; i <2; i++) {
+  for (int i = 0; i < 2; i++) {
     if (i == 0) {
       ld1 = frontLeft;
       ld2 = middleRight;
@@ -460,18 +458,18 @@ Leg ld1, ld2, ld3, bm1, bm2, bm3;
       bm2 = middleRight;
       bm3 = rearLeft;
     }
-  inverseKinematics(ld1, frontLiftX, frontLiftY, groundTarget + liftClearance, velocity, true);//front - lift
-  inverseKinematics(ld2, midLiftX, midLiftY, groundTarget + liftClearance, velocity, true); //middle - lift
-  inverseKinematics(ld3, rearLiftX, rearLiftY, groundTarget + liftClearance, velocity, true); //rear - lift
-  
-  inverseKinematics(bm1, frontMoveX, frontMoveY, groundTarget, velocity, true);//front - lift
-  inverseKinematics(bm2, midMoveX, midMoveY, groundTarget, velocity, true); //middle - lift
-  inverseKinematics(bm3, rearMoveX, rearMoveY, groundTarget, velocity, false); //rear - lift
-  
-  inverseKinematics(ld1, frontDropX, frontDropY, groundTarget, velocity, true);//front - lift
-  inverseKinematics(ld2, midDropX, midDropY, groundTarget, velocity, true); //middle - drop
-  inverseKinematics(ld3, rearDropX, rearDropY, groundTarget, velocity, false); //rear - drop
-  
+    inverseKinematics(ld1, frontLiftX, frontLiftY, groundTarget + liftClearance, velocity, true);//front - lift
+    inverseKinematics(ld2, midLiftX, midLiftY, groundTarget + liftClearance, velocity, true); //middle - lift
+    inverseKinematics(ld3, rearLiftX, rearLiftY, groundTarget + liftClearance, velocity, true); //rear - lift
+
+    inverseKinematics(bm1, frontMoveX, frontMoveY, groundTarget, velocity, true);//front - move
+    inverseKinematics(bm2, midMoveX, midMoveY, groundTarget, velocity, true); //middle - move
+    inverseKinematics(bm3, rearMoveX, rearMoveY, groundTarget, velocity, false); //rear - move
+
+    inverseKinematics(ld1, frontDropX, frontDropY, groundTarget, velocity, true);//front - drop
+    inverseKinematics(ld2, midDropX, midDropY, groundTarget, velocity, true); //middle - drop
+    inverseKinematics(ld3, rearDropX, rearDropY, groundTarget, velocity, false); //rear - drop
+
   }
 }
 
@@ -501,7 +499,7 @@ void biRipple(float strideLength, float strideWidth, float strideLift, float vel
 
 
 void forwardKinematics(float q1, float q2, float q3) {
-  q1 = q1 * PI / 180;  // convert to radians
+  q1 = q1 * PI / 180;
   q2 = q2 * PI / 180;
   q3 = q3 * PI / 180;
 
@@ -520,30 +518,25 @@ void forwardKinematics(float q1, float q2, float q3) {
 }
 
 void setBodyPosition(float x, float y, float z) {
-    float theta1, theta2;
-    float L1_fk, L2_fk, Lc;
-    float l1 = 54.282;  // length of link 1
-    float l2 = 140;  // length of link 2
-    float l3 = 242.58;  // length of link 3
-
-    for (int i = 0; i < numLegs; i++) {
-        Lc = sqrt(pow(x, 2) + pow(y, 2));
-        theta1 = atan2(y, x) - acos((pow(Lc, 2) + pow(l1, 2) - pow(l2, 2)) / (2 * Lc * l1));
-        L1_fk = Lc - (l1 * cos(theta1));
-        theta2 = acos((pow(l1, 2) + pow(l2, 2) - pow(Lc, 2)) / (2 * l1 * l2));
-        L2_fk = sqrt(pow(Lc, 2) + pow(l1, 2) - 2 * Lc * l1 * cos(theta2));
-        legFL[0].setEaseTo(radToServo(theta1));
-        legFL[1].setEaseTo(180 - radToServo(theta2));
-        legFL[2].setEaseTo(radToServo(acos((pow(l2, 2) + pow(l3, 2) - pow(L2_fk, 2)) / (2 * l2 * l3))));
-    }
+  for (int i = 0; i < numLegs; i++) {
+    Lc = sqrt(pow(x, 2) + pow(y, 2));
+    theta1 = atan2(y, x) - acos((pow(Lc, 2) + pow(l1, 2) - pow(l2, 2)) / (2 * Lc * l1));
+    L1_fk = Lc - (l1 * cos(theta1));
+    theta2 = acos((pow(l1, 2) + pow(l2, 2) - pow(Lc, 2)) / (2 * l1 * l2));
+    L2_fk = sqrt(pow(Lc, 2) + pow(l1, 2) - 2 * Lc * l1 * cos(theta2));
+    theta3 = acos((pow(l2, 2) + pow(l3, 2) - pow(L2_fk, 2)) / (2 * l2 * l3));
+    legFL[0].setEaseTo(radToServo(theta1));
+    legFL[1].setEaseTo(180 - radToServo(theta2));
+    legFL[2].setEaseTo(radToServo(theta3));
+  }
 }
 
 int radToServo(float angle) {
-    return (int)((angle * 180) / M_PI + 90);
+  return (int)((angle * 180) / M_PI + 90);
 }
 
 
-//This needs to run over uart or ideally be moved to a 2nd mpu when integrated with the Ralph v1.0 board
+//This needs to run over uart1 (pins 8, 9) for Ralph V2 mainboard
 void readRadioControlValues(float &ch1, float &ch2, float &ch3, float &ch4, float &ch5, float &ch6) {
   int pulseWidth1 = pulseIn(CH1_PIN, HIGH);
   int pulseWidth2 = pulseIn(CH2_PIN, HIGH);
