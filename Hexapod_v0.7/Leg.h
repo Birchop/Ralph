@@ -5,7 +5,7 @@
 
 class Leg {
   public:
-    Leg(int servo1, int servo2, int servo3, Adafruit_PWMServoDriver &pwm, float baseOffset, int side, int q1Min, int q1Max); // Constructor
+    Leg(int servo1, int servo2, int servo3, Adafruit_PWMServoDriver &pwm, float baseOffset, int side, int middle, int q1Min, int q1Max); // Constructor
 
     // Methods
     void moveLeg(float x, float y, float z);
@@ -17,6 +17,7 @@ class Leg {
     Adafruit_PWMServoDriver &pwm;
     int baseOffset;
     int side;
+    int middle;
     int q1Min;
     int q1Max;
     const float l1 = 32.5; // Coxa length

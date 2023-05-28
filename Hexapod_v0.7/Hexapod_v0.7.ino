@@ -15,12 +15,12 @@ TwoWire  W1 = TwoWire(i2c1, 18, 19);
 Adafruit_PWMServoDriver pwm1 = Adafruit_PWMServoDriver(0x40, W1); // Expander 1
 Adafruit_PWMServoDriver pwm2 = Adafruit_PWMServoDriver(0x41, W1); // Expander 2
 
-Leg FL(1, 2, 3, pwm1, 145.7, 0, 45, 160);
-Leg ML(4, 5, 6, pwm1, 0, 0, 45, 135);
-Leg RL(7, 8, 9, pwm1, -145.7, 0, 45, 160);
-Leg FR(1, 2, 3, pwm2, 145.7, 1, 20, 135);
-Leg MR(4, 5, 6, pwm2, 0, 1, 45, 135);
-Leg RR(7, 8, 9, pwm2, -145.7, 1, 20, 135);
+Leg FL(0, 1, 2, pwm1, 145.7, 0, 0, 45, 160);
+Leg ML(3, 4, 5, pwm1, 0, 0, 1, 45, 135);
+Leg RL(6, 7, 8, pwm1, -145.7, 0, 0, 45, 160);
+Leg FR(0, 1, 2, pwm2, 145.7, 1, 0, 20, 135);
+Leg MR(3, 4, 5, pwm2, 0, 1, 1, 45, 135);
+Leg RR(6, 7, 8, pwm2, -145.7, 1, 0, 20, 135);
 
 float stepTracker = 0;
 
@@ -39,9 +39,10 @@ float channel[6];
 
 void setup() {//core 0
   Serial.begin(115200);
-  delay(4000);
+  delay(5000);
   Serial.println("Serial started. pwm1/2 begin - Attaching legs");
   attachLegs();
+  Serial.println("Legs attached");
   //for (;;){}; //freeze for calibration
   Serial.println("Loop start");
 
@@ -56,11 +57,18 @@ void setup1() {//core 1
 }
 
 void loop() {//core 0
+  //Serial.println("Test1 - Safety Branch");
+  //delay(50);
   if (ch[6] < 55) {
+ //   Serial.println("Test2 - Control Enabled");
     GaitEngine(TRI, 25, channel[1], -140 + channel[2], 100, channel[0], channel[3], channel[4]);
+   // Serial.println("Test3 - Gait Cycle Complete");
   } else {
-    GaitEngine(TRI, 25, 0, -150, 130, 0, 0, -60);
+    //Serial.println("Test2 - Control Disabled");
+    GaitEngine(TRI, 25, 0, -150, 130, 0, 0, -100);
   }
+  //Serial.println("Loop End");
+  //delay(500);
 }
 
 void loop1() {//core 1
@@ -124,7 +132,7 @@ void GaitEngine(Gait gait, float increment, float stride, float ground, float st
   float yDest[6];
 
   switch (gait) {
-    case 0:
+    case TRI:
       for (int j = 0; j < 2; j++) {
         for (int i = 0; i <= increment; i++) {
           float xDiff[3] = {
@@ -144,61 +152,44 @@ void GaitEngine(Gait gait, float increment, float stride, float ground, float st
           } else {
             zArc[i] = ground + ((((abs(x_min_f - x_max_f) + abs(y_min_f - y_max_f)) * 2) / increment) * i);
           }
-
-
-          if (j == 0) {
-
-            Leg& leg1 = (j == 0) ? tri1[0] : tri2[0];
-            Leg& leg2 = (j != 0) ? tri2[0] : tri1[0];
-            Leg& leg3 = (j == 0) ? tri1[1] : tri2[1];
-            Leg& leg4 = (j != 0) ? tri2[1] : tri1[1];
-            Leg& leg5 = (j == 0) ? tri1[2] : tri2[2];
-            Leg& leg6 = (j != 0) ? tri2[2] : tri1[2];
+                                                      //  J == 0
+            Leg& leg1 = (j == 0) ? tri1[0] : tri2[0]; //  FL
+            Leg& leg2 = (j == 0) ? tri2[0] : tri1[0]; //  FR
+            Leg& leg3 = (j == 0) ? tri1[1] : tri2[1]; //  MR
+            Leg& leg4 = (j == 0) ? tri2[1] : tri1[1]; //  ML
+            Leg& leg5 = (j == 0) ? tri1[2] : tri2[2]; //  RL
+            Leg& leg6 = (j == 0) ? tri2[2] : tri1[2]; //  RR
 
             xDest[0] = x_max_f - xDiff[0]; xDest[1] = x_min_m + xDiff[1]; xDest[2] = x_min_r + xDiff[2];
             xDest[3] = x_min_f + xDiff[0]; xDest[4] = x_max_m - xDiff[1]; xDest[5] = x_max_r - xDiff[2];
 
-            yDest[0] = y_max_f - yDiff[0]; yDest[1] = y_max_m - yDiff[1]; yDest[2] = y_max_r - yDiff[2];
-            yDest[3] = y_max_f - yDiff[0]; yDest[4] = y_max_m - yDiff[1]; yDest[5] = y_max_r - yDiff[2];
+            yDest[0] = (j == 0) ? y_max_f - yDiff[0] : y_min_f + yDiff[0];
+            yDest[1] = (j == 0) ? y_max_m - yDiff[1] : y_min_m + yDiff[1];
+            yDest[2] = (j == 0) ? y_max_r - yDiff[2] : y_min_r + yDiff[2];
+            yDest[3] = (j == 0) ? y_max_f - yDiff[0] : y_min_f + yDiff[0];
+            yDest[4] = (j == 0) ? y_max_m - yDiff[1] : y_min_m + yDiff[1];
+            yDest[5] = (j == 0) ? y_max_r - yDiff[2] : y_min_r + yDiff[2];
 
-            leg1.moveLeg(xDest[0], yDest[0], zArc[i]);
-            leg4.moveLeg(xDest[1], yDest[1], zArc[i]);
+            leg1.moveLeg(xDest[0], yDest[0], zArc[i]);  
+            leg3.moveLeg(-xDest[1], yDest[1], zArc[i]);
             leg5.moveLeg(xDest[2], yDest[2], zArc[i]);
+            
             leg2.moveLeg(xDest[3], yDest[3], ground);
-            leg3.moveLeg(xDest[4], yDest[4], ground);
+            leg4.moveLeg(-xDest[4], yDest[4], ground);
             leg6.moveLeg(xDest[5], yDest[5], ground);
+            
             stepTracker++;
-          } else {
-
-            Leg& leg1 = (j != 0) ? tri1[0] : tri2[0];
-            Leg& leg2 = (j == 0) ? tri2[0] : tri1[0];
-            Leg& leg3 = (j != 0) ? tri1[1] : tri2[1];
-            Leg& leg4 = (j == 0) ? tri2[1] : tri1[1];
-            Leg& leg5 = (j != 0) ? tri1[2] : tri2[2];
-            Leg& leg6 = (j == 0) ? tri2[2] : tri1[2];
-
-            xDest[0] = x_max_f - xDiff[0]; xDest[1] = x_min_m + xDiff[1]; xDest[2] = x_min_r + xDiff[2];
-            xDest[3] = x_min_f + xDiff[0]; xDest[4] = x_max_m - xDiff[1]; xDest[5] = x_max_r - xDiff[2];
-
-            yDest[0] = y_min_f + yDiff[0]; yDest[1] = y_min_m + yDiff[1]; yDest[2] = y_min_r + yDiff[2];
-            yDest[3] = y_min_f + yDiff[0]; yDest[4] = y_min_m + yDiff[1]; yDest[5] = y_min_r + yDiff[2];
-
-            leg1.moveLeg(xDest[0], yDest[0], zArc[i]);
-            leg4.moveLeg(xDest[1], yDest[1], zArc[i]);
-            leg5.moveLeg(xDest[2], yDest[2], zArc[i]);
-            leg2.moveLeg(xDest[3], yDest[3], ground);
-            leg3.moveLeg(xDest[4], yDest[4], ground);
-            leg6.moveLeg(xDest[5], yDest[5], ground);
-            stepTracker++;
-          }
+          
         }
       }
-      break;
-    default:
-      Serial.println("Invalid gait selected.");
-      break;
+        break;
+      default:
+        Serial.println("Invalid gait selected.");
+        break;
+      }
   }
-}
+
+
 
 void attachLegs() {
   pwm1.begin();
