@@ -3,6 +3,7 @@
 #include <math.h>
 #include <hardware/uart.h>
 #include "Leg.h"
+#include "Gyro.h"
 
 #define IBUS_FRAME_SIZE 32
 #define CHANNELS_TO_READ 10
@@ -10,10 +11,14 @@
 #define RX_PIN 9
 #define BAUD_RATE 115200
 
-TwoWire  W1 = TwoWire(i2c1, 18, 19);
+
+TwoWire W1 = TwoWire(i2c1, 18, 19);
+TwoWire W2 = TwoWire(i2c0, 16, 17);
 
 Adafruit_PWMServoDriver pwm1 = Adafruit_PWMServoDriver(0x40, W1); // Expander 1
 Adafruit_PWMServoDriver pwm2 = Adafruit_PWMServoDriver(0x41, W1); // Expander 2
+
+Gyro gyro(0x68, W2);
 
 Leg FL(0, 1, 2, pwm1, 145.7, 0, 0, 45, 160);
 Leg ML(3, 4, 5, pwm1, 0, 0, 1, 45, 135);
@@ -25,7 +30,8 @@ Leg RR(6, 7, 8, pwm2, -145.7, 1, 0, 20, 135);
 float stepTracker = 0;
 
 enum Gait {
-  TRI
+  TRI,
+  TriGyro
 };
 
 uint8_t ibusBuff[IBUS_FRAME_SIZE];
@@ -40,6 +46,9 @@ float channel[6];
 void setup() {//core 0
   Serial.begin(115200);
   delay(5000);
+  W2.begin();
+  gyro.begin();
+  //delay(5000);
   Serial.println("Serial started. pwm1/2 begin - Attaching legs");
   attachLegs();
   Serial.println("Legs attached");
@@ -57,14 +66,14 @@ void setup1() {//core 1
 }
 
 void loop() {//core 0
-  //Serial.println("Test1 - Safety Branch");
+  Serial.println("Test1 - Safety Branch");
   //delay(50);
   if (ch[6] < 55) {
- //   Serial.println("Test2 - Control Enabled");
-    GaitEngine(TRI, 25, channel[1], -140 + channel[2], 100, channel[0], channel[3], channel[4]);
-   // Serial.println("Test3 - Gait Cycle Complete");
+    //   Serial.println("Test2 - Control Enabled");
+    GaitEngine(TriGyro, 25, channel[1], -140 + channel[2], 100, channel[0], channel[3], channel[4]);
+    // Serial.println("Test3 - Gait Cycle Complete");
   } else {
-    //Serial.println("Test2 - Control Disabled");
+    Serial.println("Test2 - Control Disabled");
     GaitEngine(TRI, 25, 0, -150, 130, 0, 0, -100);
   }
   //Serial.println("Loop End");
@@ -92,12 +101,12 @@ void loop1() {//core 1
         ch[i] = channelValues[i];
       }
     }
-    channel[0] = map(ch[1], 0, 100, -100, 100);
+    channel[0] = map(ch[1], 0, 100, 100, -100);
     channel[1] = map(ch[2], 0, 100, -100, 100);
-    channel[2] = map(ch[3], 0, 100, -100, 100);
-    channel[3] = map(ch[4], 0, 100, -100, 100);
-    channel[4] = map(ch[5], 0, 100, -150, 50);
-    channel[5] = map(ch[6], 0, 100, 100, 0);
+    channel[2] = map(ch[3], 0, 100, -115, -85);
+    channel[3] = map(ch[4], 0, 100, 100, -100);
+    channel[4] = map(ch[5], 0, 100, -200, 0);
+    channel[5] = map(ch[6], 0, 100, 0, 100);
   }
 }
 
@@ -152,42 +161,137 @@ void GaitEngine(Gait gait, float increment, float stride, float ground, float st
           } else {
             zArc[i] = ground + ((((abs(x_min_f - x_max_f) + abs(y_min_f - y_max_f)) * 2) / increment) * i);
           }
-                                                      //  J == 0
-            Leg& leg1 = (j == 0) ? tri1[0] : tri2[0]; //  FL
-            Leg& leg2 = (j == 0) ? tri2[0] : tri1[0]; //  FR
-            Leg& leg3 = (j == 0) ? tri1[1] : tri2[1]; //  MR
-            Leg& leg4 = (j == 0) ? tri2[1] : tri1[1]; //  ML
-            Leg& leg5 = (j == 0) ? tri1[2] : tri2[2]; //  RL
-            Leg& leg6 = (j == 0) ? tri2[2] : tri1[2]; //  RR
+          //  J == 0
+          Leg& leg1 = (j == 0) ? tri1[0] : tri2[0]; //  FL
+          Leg& leg2 = (j == 0) ? tri2[0] : tri1[0]; //  FR
+          Leg& leg3 = (j == 0) ? tri1[1] : tri2[1]; //  MR
+          Leg& leg4 = (j == 0) ? tri2[1] : tri1[1]; //  ML
+          Leg& leg5 = (j == 0) ? tri1[2] : tri2[2]; //  RL
+          Leg& leg6 = (j == 0) ? tri2[2] : tri1[2]; //  RR
 
-            xDest[0] = x_max_f - xDiff[0]; xDest[1] = x_min_m + xDiff[1]; xDest[2] = x_min_r + xDiff[2];
-            xDest[3] = x_min_f + xDiff[0]; xDest[4] = x_max_m - xDiff[1]; xDest[5] = x_max_r - xDiff[2];
+          xDest[0] = x_max_f - xDiff[0]; xDest[1] = x_min_m + xDiff[1]; xDest[2] = x_min_r + xDiff[2];
+          xDest[3] = x_min_f + xDiff[0]; xDest[4] = x_max_m - xDiff[1]; xDest[5] = x_max_r - xDiff[2];
 
-            yDest[0] = (j == 0) ? y_max_f - yDiff[0] : y_min_f + yDiff[0];
-            yDest[1] = (j == 0) ? y_max_m - yDiff[1] : y_min_m + yDiff[1];
-            yDest[2] = (j == 0) ? y_max_r - yDiff[2] : y_min_r + yDiff[2];
-            yDest[3] = (j == 0) ? y_max_f - yDiff[0] : y_min_f + yDiff[0];
-            yDest[4] = (j == 0) ? y_max_m - yDiff[1] : y_min_m + yDiff[1];
-            yDest[5] = (j == 0) ? y_max_r - yDiff[2] : y_min_r + yDiff[2];
+          yDest[0] = (j == 0) ? y_max_f - yDiff[0] : y_min_f + yDiff[0];
+          yDest[1] = (j == 0) ? y_max_m - yDiff[1] : y_min_m + yDiff[1];
+          yDest[2] = (j == 0) ? y_max_r - yDiff[2] : y_min_r + yDiff[2];
+          yDest[3] = (j == 0) ? y_max_f - yDiff[0] : y_min_f + yDiff[0];
+          yDest[4] = (j == 0) ? y_max_m - yDiff[1] : y_min_m + yDiff[1];
+          yDest[5] = (j == 0) ? y_max_r - yDiff[2] : y_min_r + yDiff[2];
 
-            leg1.moveLeg(xDest[0], yDest[0], zArc[i]);  
-            leg3.moveLeg(-xDest[1], yDest[1], zArc[i]);
-            leg5.moveLeg(xDest[2], yDest[2], zArc[i]);
-            
-            leg2.moveLeg(xDest[3], yDest[3], ground);
-            leg4.moveLeg(-xDest[4], yDest[4], ground);
-            leg6.moveLeg(xDest[5], yDest[5], ground);
-            
-            stepTracker++;
-          
+          leg1.moveLeg(xDest[0], yDest[0], zArc[i]);
+          leg3.moveLeg(-xDest[1], yDest[1], zArc[i]);
+          leg5.moveLeg(xDest[2], yDest[2], zArc[i]);
+
+          leg2.moveLeg(xDest[3], yDest[3], ground);
+          leg4.moveLeg(-xDest[4], yDest[4], ground);
+          leg6.moveLeg(xDest[5], yDest[5], ground);
+
+          stepTracker++;
+
         }
       }
-        break;
-      default:
-        Serial.println("Invalid gait selected.");
-        break;
+      break;
+
+    case TriGyro:
+      for (int j = 0; j < 2; j++) {
+        for (int i = 0; i <= increment; i++) {
+          float xDiff[3] = {
+            (x_min_f > x_max_f ? -1 : 1) * (abs(x_min_f - x_max_f) / increment) * i,
+            (x_min_m > x_max_m ? -1 : 1) * (abs(x_min_m - x_max_m) / increment) * i,
+            (x_min_r > x_max_r ? -1 : 1) * (abs(x_min_r - x_max_r) / increment) * i
+          };
+          float yDiff[3] = {
+            (y_min_f > y_max_f ? -1 : 1) * (abs(y_min_f - y_max_f) / increment) * i,
+            (y_min_m > y_max_m ? -1 : 1) * (abs(y_min_m - y_max_m) / increment) * i,
+            (y_min_r > y_max_r ? -1 : 1) * (abs(y_min_r - y_max_r) / increment) * i
+          };
+
+          if (i >= halfInc) {
+            int t  = increment - i;
+            zArc[i] = zArc[t];
+          } else {
+            zArc[i] = ground + ((((abs(x_min_f - x_max_f) + abs(y_min_f - y_max_f)) * 2) / increment) * i);
+          }
+          //  J == 0
+          Leg& leg1 = (j == 0) ? tri1[0] : tri2[0]; //  FL
+          Leg& leg2 = (j == 0) ? tri2[0] : tri1[0]; //  FR
+          Leg& leg3 = (j == 0) ? tri1[1] : tri2[1]; //  MR
+          Leg& leg4 = (j == 0) ? tri2[1] : tri1[1]; //  ML
+          Leg& leg5 = (j == 0) ? tri1[2] : tri2[2]; //  RL
+          Leg& leg6 = (j == 0) ? tri2[2] : tri1[2]; //  RR
+
+          xDest[0] = x_max_f - xDiff[0]; xDest[1] = x_min_m + xDiff[1]; xDest[2] = x_min_r + xDiff[2];
+          xDest[3] = x_min_f + xDiff[0]; xDest[4] = x_max_m - xDiff[1]; xDest[5] = x_max_r - xDiff[2];
+
+          yDest[0] = (j == 0) ? y_max_f - yDiff[0] : y_min_f + yDiff[0];
+          yDest[1] = (j == 0) ? y_max_m - yDiff[1] : y_min_m + yDiff[1];
+          yDest[2] = (j == 0) ? y_max_r - yDiff[2] : y_min_r + yDiff[2];
+          yDest[3] = (j == 0) ? y_max_f - yDiff[0] : y_min_f + yDiff[0];
+          yDest[4] = (j == 0) ? y_max_m - yDiff[1] : y_min_m + yDiff[1];
+          yDest[5] = (j == 0) ? y_max_r - yDiff[2] : y_min_r + yDiff[2];
+          gyro.update();
+          float Roll = gyro.getPitch() * DEG_TO_RAD; //sensor mounted weirdly, pitch roll swapped
+          float Pitch = (gyro.getRoll() * DEG_TO_RAD) - 1.5f;
+
+          // Distances of the legs from the center of the hexapod
+          float distFromCenter[6] = {95, 95, 80, 80, 95, 95};
+
+          // Calculate total distances of the legs from the center of the hexapod
+          float totalDist[6];
+          float zAdjustment[6];
+          for (int k = 0; k < 6; k++) {
+            totalDist[k] = distFromCenter[k] + sqrt(xDest[k] * xDest[k] + yDest[k] * yDest[k]);
+            zAdjustment[k] = totalDist[k] * tan(Pitch) + totalDist[k] * tan(Roll);
+            Serial.print("zAdjustments: ");
+            Serial.print(zAdjustment[k]);
+            if (k < 5) {
+              Serial.print(", ");
+            } else {
+              Serial.println();
+            }
+          }
+
+          // Print pitch and roll
+          Serial.print("Pitch: ");
+          Serial.print(Pitch);
+          Serial.print(", Roll: ");
+          Serial.println(Roll);
+
+          // Print separator line
+          Serial.println("-    -");
+
+          if (j == 0) {
+            leg1.moveLeg(xDest[0], yDest[0], zArc[i] + zAdjustment[0]);
+            leg3.moveLeg(-xDest[1], yDest[1], zArc[i] + zAdjustment[1]);
+            leg5.moveLeg(xDest[2], yDest[2], zArc[i] + zAdjustment[2]);
+
+            leg2.moveLeg(xDest[3], yDest[3], ground + zAdjustment[3]);
+            leg4.moveLeg(-xDest[4], yDest[4], ground + zAdjustment[4]);
+            leg6.moveLeg(xDest[5], yDest[5], ground + zAdjustment[5]);
+
+            Serial.println("Tri 1 lifting: " + String(zArc[i] + zAdjustment[0]) + ", " + String(zArc[i] + zAdjustment[1]) + ", " + String(zArc[i] + zAdjustment[2]) + ", " + String(ground + zAdjustment[3]) + ", " + String(ground + zAdjustment[4]) + ", " + String(zArc[i] + zAdjustment[5]));
+          } else {
+            leg1.moveLeg(xDest[0], yDest[0], zArc[i] + zAdjustment[3]);
+            leg3.moveLeg(-xDest[1], yDest[1], zArc[i] + zAdjustment[4]);
+            leg5.moveLeg(xDest[2], yDest[2], zArc[i] + zAdjustment[5]);
+
+            leg2.moveLeg(xDest[3], yDest[3], ground + zAdjustment[0]);
+            leg4.moveLeg(-xDest[4], yDest[4], ground + zAdjustment[1]);
+            leg6.moveLeg(xDest[5], yDest[5], ground + zAdjustment[2]);
+            Serial.println("Tri 2 lifting: " + String(zArc[i] + zAdjustment[0]) + ", " + String(zArc[i] + zAdjustment[1]) + ", " + String(zArc[i] + zAdjustment[2]) + ", " + String(ground + zAdjustment[3]) + ", " + String(ground + zAdjustment[4]) + ", " + String(zArc[i] + zAdjustment[5]));
+          }
+
+          stepTracker++;
+        }
       }
+      break;
+
+    default:
+      Serial.println("Invalid gait selected.");
+      break;
   }
+}
 
 
 
