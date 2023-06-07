@@ -13,6 +13,7 @@ class Gyro {
     void getAngleAccel(int16_t Ax, int16_t Ay, int16_t Az);
     void getAngleGyro(int16_t Gx, int16_t Gy, int16_t Gz);
     void updateFusedData();
+    void updatePR();
     double getFusedPitch();
     double getFusedRoll();
     double getFusedYaw();
@@ -40,7 +41,8 @@ class Gyro {
     float getGyX_rad();
     float getGyY_rad();
     float getGyZ_rad();
-    double fAll[3];
+    double fAll[6];
+    float fPitch, fRoll, fYaw;
 
   private:
     uint8_t _MPD;
@@ -55,7 +57,7 @@ class Gyro {
     int16_t AcXcal, AcYcal, AcZcal, Tmpcal, GyXcal, GyYcal, GyZcal;
     float pitchCal, rollCal, yawCal;
     float fgx, fgy, fgz, fax, fay, faz;
-    float fPitch, fRoll, fYaw;
+    
     float deltat;
     
 };

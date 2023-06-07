@@ -24,15 +24,23 @@ void Gyro::begin() {
 }
 
 void Gyro::calibrate() {
-  int16_t AcXcalArr[50];
-  int16_t AcYcalArr[50];
-  int16_t AcZcalArr[50];
-  int16_t GyXcalArr[50];
-  int16_t GyYcalArr[50];
-  int16_t GyZcalArr[50];
-  float pitchArr[50];
-  float rollArr[50];
-  float yawArr[50];
+  int16_t AcXcalArr[100];
+  int16_t AcYcalArr[100];
+  int16_t AcZcalArr[100];
+  int16_t GyXcalArr[100];
+  int16_t GyYcalArr[100];
+  int16_t GyZcalArr[100];
+  float pitchArr[100];
+  float rollArr[100];
+  float yawArr[100];
+  AcXcal = 0;
+  AcYcal = 0;
+  AcZcal = 0;
+  GyXcal = 0;
+  GyYcal = 0;
+  GyZcal = 0;
+  pitchCal = 0;
+  rollCal = 0;
 
   Serial.print("Calibrating:");
   for (int i = 0; i < 50; i++) {
@@ -47,21 +55,15 @@ void Gyro::calibrate() {
     GyXcalArr[i] = _wire->read() << 8 | _wire->read();
     GyYcalArr[i] = _wire->read() << 8 | _wire->read();
     GyZcalArr[i] = _wire->read() << 8 | _wire->read();
-    updateFusedData();
-    pitchArr[i] = fAll[0];
-    rollArr[i] = fAll[1];
-    yawArr[i] = fAll[2];
+    getAngleAccel(AcXcalArr[i], AcYcalArr[i], AcZcalArr[i]);
+    pitchArr[i] = getPitch();
+    rollArr[i] = getRoll();
     //_wire->endTransmission(true);
     Serial.print(".");
-    delay(50);
+    //delay(50);
   }
   Serial.println(":Data captured");
-  AcXcal = 0;
-  AcYcal = 0;
-  AcZcal = 0;
-  GyXcal = 0;
-  GyYcal = 0;
-  GyZcal = 0;
+  
   for (int i = 0; i < 50; i++) {
     AcXcal += AcXcalArr[i];
     AcYcal += AcYcalArr[i];
@@ -71,7 +73,6 @@ void Gyro::calibrate() {
     GyZcal += GyZcalArr[i];
     pitchCal += pitchArr[i];
     rollCal += rollArr[i];
-    yawCal += yawArr[i];
   }
   AcXcal = AcXcal / 50;
   AcYcal = AcYcal / 50;
@@ -81,7 +82,6 @@ void Gyro::calibrate() {
   GyZcal = GyZcal / 50;
   pitchCal = pitchCal / 50;
   rollCal = rollCal / 50;
-  yawCal = yawCal / 50;
 /*
   getAngle(AcX, AcY, AcZ);
 
@@ -116,6 +116,8 @@ void Gyro::calibrate() {
 }
 
 void Gyro::update() {
+  unsigned long startMicros = micros();
+
   _wire->beginTransmission(_MPD);
   _wire->write(0x3B);
   _wire->endTransmission(false);
@@ -123,6 +125,10 @@ void Gyro::update() {
 
   int16_t tcal = -1600;
 
+  if (micros() - startMicros > 2500) { // Check if more than 2.5ms has passed
+    writeRegister(0x6B, 0); // PWR_MGMT_1 Reg - Wake up
+    return; // Exit the function early
+  }
 
   AcX = (_wire->read() << 8 | _wire->read()) - (AcXcal < 0 ? -AcXcal : AcXcal);
   AcY = (_wire->read() << 8 | _wire->read()) - (AcYcal < 0 ? AcYcal : -AcYcal);
@@ -141,7 +147,7 @@ void Gyro::update() {
   getAngleAccel(AcX, AcY, AcZ);
 
   // Gravity value
-  int16_t gravity = 16384;
+  //int16_t gravity = 16384;
 /*
   // Calculate the gravity components for each axis
   int16_t gravityX = gravity * sin(roll);
@@ -157,16 +163,16 @@ void Gyro::update() {
   AcY_noG = AcY - gravityY;
   AcZ_noG = AcZ - gravityZ;
 */
-  AcX_g = AcX / (float)gravity;
+  /*AcX_g = AcX / (float)gravity;
   AcY_g = AcY / (float)gravity;
   AcZ_g = AcZ / (float)gravity;
   //GyX_dg = GyX / 131.0;
   //GyY_dg = GyY / 131.0;
   //GyZ_dg = GyZ / 131.0;
-  //GyX_rad = GyX_dg * DEG_TO_RAD;
-  //GyY_rad = GyY_dg * DEG_TO_RAD;
-  //GyZ_rad = GyZ_dg * DEG_TO_RAD;
-  //getAngleGyro(GyX_dg, GyY_dg, GyZ_dg);
+  GyX_rad = GyX_dg * DEG_TO_RAD;
+  GyY_rad = GyY_dg * DEG_TO_RAD;
+  GyZ_rad = GyZ_dg * DEG_TO_RAD;
+  //getAngleGyro(GyX_dg, GyY_dg, GyZ_dg);*/
 }
 
 void Gyro::getAngleAccel(int16_t Ax, int16_t Ay, int16_t Az) {
@@ -175,8 +181,10 @@ void Gyro::getAngleAccel(int16_t Ax, int16_t Ay, int16_t Az) {
   double z = Az;
   pitch = atan(x / sqrt((y * y) + (z * z)));
   roll = atan(y / sqrt((x * x) + (z * z)));
-  pitch = pitch * (180.0 / 3.14);
-  roll = roll * (180.0 / 3.14) ;
+  pitch *= RAD_TO_DEG;
+  roll *= RAD_TO_DEG;
+  //pitch = pitch - pitchCal;
+  //roll = roll - pitchCal;
 }
 
 void Gyro::getAngleGyro(int16_t gx, int16_t gy, int16_t gz) {
@@ -185,14 +193,12 @@ void Gyro::getAngleGyro(int16_t gx, int16_t gy, int16_t gz) {
   double gyroYrate = gy / 131.0;
   double gyroZrate = gz / 131.0;
 
-  // The gyroscope data is integrated over time to calculate angle,
-  // as it provides the angular velocity (degrees/sec)
+
   pitchGyro += gy;
   rollGyro += gx;
 
   // Note: This simple integration method accumulates error over time,
-  // a more accurate way to do this is to use a Kalman filter or a
-  // complementary filter which combine accelerometer and gyroscope data.
+  // in other words; this sucks
 }
 
 void Gyro::updateFusedData() {
@@ -208,21 +214,28 @@ void Gyro::updateFusedData() {
   fPitch = fusion.getPitch();
   fRoll = fusion.getRoll();
   fYaw = fusion.getYaw();
-  fAll[0] = fPitch - pitchCal;
-  fAll[1] = fRoll - rollCal;
-  fAll[2] = fYaw - yawCal;;
+}
+
+void Gyro::updatePR() {
+    update();
+    
+    fRoll = getPitch();
+    fPitch = getRoll();
+
+    //fRoll *= DEG_TO_RAD;
+    //fPitch *= DEG_TO_RAD;
 }
 
 double Gyro::getFusedPitch() {
-  return fAll[0];
+  return fPitch;
 }
 
 double Gyro::getFusedRoll() {
-  return fAll[1];
+  return fRoll;
 }
 
 double Gyro::getFusedYaw() {
-  return fAll[2];
+  return fYaw;
 }
 
 double Gyro::getPitch() {
