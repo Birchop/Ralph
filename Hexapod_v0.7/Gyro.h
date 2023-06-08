@@ -14,15 +14,15 @@ class Gyro {
     void getAngleGyro(int16_t Gx, int16_t Gy, int16_t Gz);
     void updateFusedData();
     void updatePR();
-    double getFusedPitch();
-    double getFusedRoll();
-    double getFusedYaw();
-    double getPitch();
-    double getRoll();
-    double getPitchGyro();
-    double getRollGyro();
-    double getTempC();
-    double getTempF();
+    float getFusedPitch();
+    float getFusedRoll();
+    float getFusedYaw();
+    float getPitch();
+    float getRoll();
+    float getPitchGyro();
+    float getRollGyro();
+    float getTempC();
+    float getTempF();
     int16_t getAcX();
     int16_t getAcY();
     int16_t getAcZ();
@@ -41,19 +41,20 @@ class Gyro {
     float getGyX_rad();
     float getGyY_rad();
     float getGyZ_rad();
-    double fAll[6];
+    float fAll[6];
     float fPitch, fRoll, fYaw;
 
   private:
     uint8_t _MPD;
     TwoWire *_wire;
     int16_t Tmp;
+    int16_t tcal = -1600;
     int16_t AcX, AcY, AcZ, GyX, GyY, GyZ;
     float AcX_g, AcY_g, AcZ_g;
     float AcX_noG, AcY_noG, AcZ_noG;
     float GyX_dg, GyY_dg, GyZ_dg;
     float GyX_rad, GyY_rad, GyZ_rad;
-    double t, tx, tf, pitch, roll, pitchGyro, rollGyro;
+    float t, tx, tf, pitch, roll, pitchGyro, rollGyro;
     int16_t AcXcal, AcYcal, AcZcal, Tmpcal, GyXcal, GyYcal, GyZcal;
     float pitchCal, rollCal, yawCal;
     float fgx, fgy, fgz, fax, fay, faz;

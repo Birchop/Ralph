@@ -5,6 +5,7 @@
 #include "Leg.h"
 #include "X6B.h"
 #include "Gyro.h"
+#include <malloc.h>
 
 #define IBUS_FRAME_SIZE 32
 #define CHANNELS_TO_READ 10
@@ -33,8 +34,8 @@ Leg RR(6, 7, 8, pwm2, -145.7, 1, 0, 20, 135);
 
 float stepTracker = 0;
 
-double pitch;
-double roll;
+float pitch;
+float roll;
 
 enum Gait {
   TRI
@@ -46,6 +47,7 @@ float channel[10];
 
 void setup() {//core 0
   Serial.begin(115200);
+
   delay(5000);
   Serial.println("Serial started. pwm1/2 begin - Attaching legs");
   attachLegs();
@@ -56,14 +58,20 @@ void setup() {//core 0
 }
 
 void setup1() {//core 1
-  x6b.begin();
   W0.begin();
+//  W0.setTimeout(2000, true);
+  //W0.setClock(400000);
   gyro.begin();
+  Serial.println(" Gyro started  ");
+  x6b.begin();
+  Serial.println("x6b started  ");
+  delay(1500);
 }
 
 void loop() {//core 0
-  Serial.println("Test1 - Safety Branch");
+  Serial.println("Loop0 - Safety Branch");
   //delay(50);
+  printRAMUsage();
 
   if (channel[7] > 1900) {
     Serial.println("Test2 - Control Enabled");
@@ -76,8 +84,6 @@ void loop() {//core 0
   } else {
     Serial.println("Test2 - Control Disabled");
     GaitEngine(TRI, 25, 0, -150, 130, 0, 0, -100);
-    pitch = gyro.getRoll(); // sensor mounted 90 deg
-        roll = gyro.getPitch();
     Serial.print("Pitch: ");
     Serial.print(pitch);
     Serial.print("  Roll: ");
@@ -88,7 +94,9 @@ void loop() {//core 0
 }
 
 void loop1() {//core 1
+  Serial.print("Loop 1 start  ");
   x6b.update();
+  Serial.print("x6b updated  ");
   channel[1] = x6b.getChannelValue(0);
   channel[2] = x6b.getChannelValue(1);
   channel[3] = map(x6b.getChannelValue(2), -85, 85, -100, -60);
@@ -98,8 +106,11 @@ void loop1() {//core 1
   channel[7] = x6b.getRxChannel(6);
   channel[8] = x6b.getRxChannel(7);
   channel[9] = x6b.getRxChannel(8);
+  Serial.print("Channels mapped  ");
   gyro.update();
-
+  Serial.print("Gyro updated  ");
+  //pitch = gyro.getRoll() * DEG_TO_RAD; // sensor mounted 90 deg
+  //roll = gyro.getPitch() * DEG_TO_RAD;
 }
 
 void GaitEngine(Gait gait, float increment, float stride, float ground, float stance, float yaw, float strafe, float FRY) {
@@ -141,26 +152,34 @@ void GaitEngine(Gait gait, float increment, float stride, float ground, float st
   switch (gait) {
     case TRI:
       for (int j = 0; j < 2; j++) {
-        pitch = gyro.getRoll() * DEG_TO_RAD; // sensor mounted 90 deg
-        roll = gyro.getPitch() * DEG_TO_RAD;
+
         for (int i = 0; i <= increment; i++) {
+          //gyro.update();
+          pitch = gyro.getRoll(); // sensor mounted 90 deg
+          roll = gyro.getPitch();
+
           float xDiff[3] = {
             (x_min_f > x_max_f ? -1 : 1) * (abs(x_min_f - x_max_f) / increment) * i,
             (x_min_m > x_max_m ? -1 : 1) * (abs(x_min_m - x_max_m) / increment) * i,
             (x_min_r > x_max_r ? -1 : 1) * (abs(x_min_r - x_max_r) / increment) * i
           };
+          Serial.print("xDiff calculated  ");
           float yDiff[3] = {
             (y_min_f > y_max_f ? -1 : 1) * (abs(y_min_f - y_max_f) / increment) * i,
             (y_min_m > y_max_m ? -1 : 1) * (abs(y_min_m - y_max_m) / increment) * i,
             (y_min_r > y_max_r ? -1 : 1) * (abs(y_min_r - y_max_r) / increment) * i
           };
-
+          Serial.print("yDiff calculated  ");
           if (i >= halfInc) {
             int t  = increment - i;
             zArc[i] = zArc[t];
-          } else {
+          } else if (i == 0) {
+            zArc[i] = ground;
+          }
+          else {
             zArc[i] = ground + ((((abs(x_min_f - x_max_f) + abs(y_min_f - y_max_f)) * 2) / increment) * i);
           }
+          Serial.print("yDiff calculated  ");
           //  J == 0
           Leg& leg1 = (j == 0) ? tri1[0] : tri2[0]; //  FL
           Leg& leg2 = (j == 0) ? tri2[0] : tri1[0]; //  FR
@@ -168,24 +187,25 @@ void GaitEngine(Gait gait, float increment, float stride, float ground, float st
           Leg& leg4 = (j == 0) ? tri2[1] : tri1[1]; //  ML
           Leg& leg5 = (j == 0) ? tri1[2] : tri2[2]; //  RL
           Leg& leg6 = (j == 0) ? tri2[2] : tri1[2]; //  RR
-
+          Serial.print("Leg objects created  ");
           xDest[0] = x_max_f - xDiff[0]; xDest[1] = x_min_m + xDiff[1]; xDest[2] = x_min_r + xDiff[2];
           xDest[3] = x_min_f + xDiff[0]; xDest[4] = x_max_m - xDiff[1]; xDest[5] = x_max_r - xDiff[2];
-
+          Serial.print("xDest calculated  ");
           yDest[0] = (j == 0) ? y_max_f - yDiff[0] : y_min_f + yDiff[0];
           yDest[1] = (j == 0) ? y_max_m - yDiff[1] : y_min_m + yDiff[1];
           yDest[2] = (j == 0) ? y_max_r - yDiff[2] : y_min_r + yDiff[2];
           yDest[3] = (j == 0) ? y_max_f - yDiff[0] : y_min_f + yDiff[0];
           yDest[4] = (j == 0) ? y_max_m - yDiff[1] : y_min_m + yDiff[1];
           yDest[5] = (j == 0) ? y_max_r - yDiff[2] : y_min_r + yDiff[2];
-
+          Serial.print("yDest calculated  ");
 
 
           for (int k = 0; k < 6; k++) {
             // Calculate relative end effector positions
             float effectorX = baseX[k] + xDest[k];
+            Serial.print("effectorX calculated  ");
             float effectorY = baseY[k] + yDest[k];
-
+            Serial.print("effectorY calculated  ");
             if (!flip) {
               effectorY = -effectorY; // invert the Y coordinate for right legs
             }
@@ -195,39 +215,52 @@ void GaitEngine(Gait gait, float increment, float stride, float ground, float st
 
             // distance from the center of the body to the end effector
             float radialDist = sqrt(effectorX * effectorX + effectorY * effectorY);
-
+            Serial.print("Radial dist calculated" + String(radialDist) + "  ");
             // calculate z adjustments
             zAdjustment[k] =  radialDist * (sin(pitch) * effectorX + sin(roll) * effectorY) / radialDist;
-
-            zAdjustment[k] = constrain(round(zAdjustment[k]), -25, 25);
-            Serial.print("zAdjustments: ");
+            Serial.print("zAdjustment: " + String(zAdjustment[k]) + "    ");
+            zAdjustment[k] = constrain(round(zAdjustment[k]), -20, 20);
+            Serial.print("zAdj Constrained: " + String(zAdjustment[k]) + "  ");
+            /*Serial.print("zAdjustments: ");
             Serial.print(zAdjustment[k]);
             if (k < 5) {
               Serial.print(", ");
             } else {
               Serial.println();
-            }
+            }*/
             flip = 1 - flip;
           }
-
+          Serial.print("J = " + String(j) + "    ");
           if (j == 0) {
             leg1.moveLeg(xDest[0], yDest[0], zArc[i] + zAdjustment[0]);
+            Serial.print("Leg1 moved  ");
             leg3.moveLeg(-xDest[1], yDest[1], zArc[i] + zAdjustment[1]);
+            Serial.print("Leg3 moved  ");
             leg5.moveLeg(xDest[2], yDest[2], zArc[i] + zAdjustment[2]);
+            Serial.print("Leg5 moved  ");
 
             leg2.moveLeg(xDest[3], yDest[3], ground + zAdjustment[3]);
+            Serial.print("Leg2 moved  ");
             leg4.moveLeg(-xDest[4], yDest[4], ground + zAdjustment[4]);
+            Serial.print("Leg4 moved  ");
             leg6.moveLeg(xDest[5], yDest[5], ground + zAdjustment[5]);
+            Serial.print("Leg6 moved  ");
 
             //Serial.println("Tri 1 lifting: " + String(zArc[i] + zAdjustment[0]) + ", " + String(zArc[i] + zAdjustment[1]) + ", " + String(zArc[i] + zAdjustment[2]) + ", " + String(ground + zAdjustment[3]) + ", " + String(ground + zAdjustment[4]) + ", " + String(zArc[i] + zAdjustment[5]));
           } else {
             leg1.moveLeg(xDest[0], yDest[0], zArc[i] + zAdjustment[3]);
+            Serial.print("Leg1 moved  ");
             leg3.moveLeg(-xDest[1], yDest[1], zArc[i] + zAdjustment[4]);
+            Serial.print("Leg3 moved  ");
             leg5.moveLeg(xDest[2], yDest[2], zArc[i] + zAdjustment[5]);
+            Serial.print("Leg5 moved  ");
 
             leg2.moveLeg(xDest[3], yDest[3], ground + zAdjustment[0]);
+            Serial.print("Leg2 moved  ");
             leg4.moveLeg(-xDest[4], yDest[4], ground + zAdjustment[1]);
+            Serial.print("Leg4 moved  ");
             leg6.moveLeg(xDest[5], yDest[5], ground + zAdjustment[2]);
+            Serial.println("Leg6 moved  ");
             //Serial.println("Tri 2 lifting: " + String(zArc[i] + zAdjustment[0]) + ", " + String(zArc[i] + zAdjustment[1]) + ", " + String(zArc[i] + zAdjustment[2]) + ", " + String(ground + zAdjustment[3]) + ", " + String(ground + zAdjustment[4]) + ", " + String(zArc[i] + zAdjustment[5]));
           }
 
@@ -242,7 +275,7 @@ void GaitEngine(Gait gait, float increment, float stride, float ground, float st
                     leg6.moveLeg(xDest[5], yDest[5], ground);
           */
           //stepTracker++;
-
+          //printRAMUsage();
         }
       }
       break;
@@ -267,4 +300,30 @@ void attachLegs() {
   RL.homeLeg();
   RR.homeLeg();
   delay(3000);
+}
+
+void printRAMUsage() {
+  struct mallinfo mi = mallinfo();
+
+  int totalMemory = mi.arena / 1024; // convert from bytes to kilobytes
+  int usedMemory = mi.uordblks / 1024; // convert from bytes to kilobytes
+  int freeMemory = mi.fordblks / 1024; // convert from bytes to kilobytes
+
+  int percentUsed = (usedMemory * 100) / totalMemory;
+
+  Serial.print("Total memory: ");
+  Serial.print(totalMemory);
+  Serial.println(" KB");
+
+  Serial.print("Used memory: ");
+  Serial.print(usedMemory);
+  Serial.println(" KB");
+
+  Serial.print("Free memory: ");
+  Serial.print(freeMemory);
+  Serial.println(" KB");
+
+  Serial.print("Percent used: ");
+  Serial.print(percentUsed);
+  Serial.println(" %");
 }

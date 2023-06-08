@@ -47,7 +47,8 @@ void Gyro::calibrate() {
     _wire->beginTransmission(_MPD);
     _wire->write(0x3B);
     _wire->endTransmission(false);
-    _wire->requestFrom(_MPD, 14, true);
+    _wire->requestFrom(_MPD, 14, false);
+    
     AcXcalArr[i] = _wire->read() << 8 | _wire->read();
     AcYcalArr[i] = _wire->read() << 8 | _wire->read();
     AcZcalArr[i] = _wire->read() << 8 | _wire->read();
@@ -58,9 +59,9 @@ void Gyro::calibrate() {
     getAngleAccel(AcXcalArr[i], AcYcalArr[i], AcZcalArr[i]);
     pitchArr[i] = getPitch();
     rollArr[i] = getRoll();
-    //_wire->endTransmission(true);
+    _wire->endTransmission(true);
     Serial.print(".");
-    //delay(50);
+    delay(1);
   }
   Serial.println(":Data captured");
   
@@ -117,19 +118,25 @@ void Gyro::calibrate() {
 
 void Gyro::update() {
   unsigned long startMicros = micros();
-
+   Serial.print("Gyro start transmission  ");
   _wire->beginTransmission(_MPD);
   _wire->write(0x3B);
   _wire->endTransmission(false);
-  _wire->requestFrom(_MPD, 14, true);
+  _wire->requestFrom(_MPD, 14, false);
+  Serial.print("Gyro request data  ");
+  
 
-  int16_t tcal = -1600;
-
-  if (micros() - startMicros > 2500) { // Check if more than 2.5ms has passed
+  if (micros() - startMicros > 10000) { // Check if more than 2.5ms has passed
     writeRegister(0x6B, 0); // PWR_MGMT_1 Reg - Wake up
+    writeRegister(0x19, 0); // SMPLRT_DIV Reg    -   Sets to maximum sample rate
+    writeRegister(0x1A, 6); // CONFIG Reg        -   Set DLPF_CFG to 6 (5Hz bandwidth)
+    writeRegister(0x1B, 0); // GYRO_CONFIG Reg   -   Set FS_SEL to 0 (±250 °/s)
+    writeRegister(0x1C, 0); // ACCEL_CONFIG Reg  -   Set AFS_SEL to 0 (±2g)
+    calibrate();
+    Serial.print("Gyro timeout  ");
     return; // Exit the function early
   }
-
+  if (_wire->available() >= 14) {
   AcX = (_wire->read() << 8 | _wire->read()) - (AcXcal < 0 ? -AcXcal : AcXcal);
   AcY = (_wire->read() << 8 | _wire->read()) - (AcYcal < 0 ? AcYcal : -AcYcal);
   AcZ = (_wire->read() << 8 | _wire->read()) - (AcZcal < 0 ? AcZcal : -AcZcal);
@@ -138,14 +145,17 @@ void Gyro::update() {
   GyY = (_wire->read() << 8 | _wire->read()) - (GyYcal < 0 ? GyYcal : -GyYcal);
   GyZ = (_wire->read() << 8 | _wire->read()) - (GyZcal < 0 ? GyZcal : -GyZcal);
 
-  //_wire->endTransmission(true);
+  _wire->endTransmission(true);
 
   tx = Tmp + tcal;
   t = tx / 340 + 36.53;
   tf = (t * 9 / 5) + 32;
-
+  Serial.print("Gyro data obtained  ");
   getAngleAccel(AcX, AcY, AcZ);
-
+} else {
+  // Not enough data available. You could print an error message or take other action here.
+  Serial.println("Gyro has shit the bed, again.");
+}
   // Gravity value
   //int16_t gravity = 16384;
 /*
@@ -176,22 +186,29 @@ void Gyro::update() {
 }
 
 void Gyro::getAngleAccel(int16_t Ax, int16_t Ay, int16_t Az) {
-  double x = Ax;
-  double y = Ay;
-  double z = Az;
+  float x = Ax;
+  float y = Ay;
+  float z = Az;
+  if (x != 0.00f && y != 0.00f && z != 0.00f) {
   pitch = atan(x / sqrt((y * y) + (z * z)));
   roll = atan(y / sqrt((x * x) + (z * z)));
-  pitch *= RAD_TO_DEG;
-  roll *= RAD_TO_DEG;
+  //pitch *= RAD_TO_DEG;
+  //roll *= RAD_TO_DEG;
+  pitch = pitch;
+  roll = roll;
   //pitch = pitch - pitchCal;
   //roll = roll - pitchCal;
+  } else {
+    pitch = 0;
+    roll = 0;
+  }
 }
 
 void Gyro::getAngleGyro(int16_t gx, int16_t gy, int16_t gz) {
   // Convert gyroscope values to degrees/sec
-  double gyroXrate = gx / 131.0;
-  double gyroYrate = gy / 131.0;
-  double gyroZrate = gz / 131.0;
+  float gyroXrate = gx / 131.0;
+  float gyroYrate = gy / 131.0;
+  float gyroZrate = gz / 131.0;
 
 
   pitchGyro += gy;
@@ -226,34 +243,34 @@ void Gyro::updatePR() {
     //fPitch *= DEG_TO_RAD;
 }
 
-double Gyro::getFusedPitch() {
+float Gyro::getFusedPitch() {
   return fPitch;
 }
 
-double Gyro::getFusedRoll() {
+float Gyro::getFusedRoll() {
   return fRoll;
 }
 
-double Gyro::getFusedYaw() {
+float Gyro::getFusedYaw() {
   return fYaw;
 }
 
-double Gyro::getPitch() {
+float Gyro::getPitch() {
   return pitch;
 }
-double Gyro::getRoll() {
+float Gyro::getRoll() {
   return roll;
 }
-double Gyro::getPitchGyro() {
+float Gyro::getPitchGyro() {
   return pitchGyro;
 }
-double Gyro::getRollGyro() {
+float Gyro::getRollGyro() {
   return rollGyro;
 }
-double Gyro::getTempC() {
+float Gyro::getTempC() {
   return t;
 }
-double Gyro::getTempF() {
+float Gyro::getTempF() {
   return tf;
 }
 int16_t Gyro::getAcX() {
