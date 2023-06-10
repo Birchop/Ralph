@@ -7,13 +7,16 @@ class Gyro {
   public:
     Gyro(uint8_t MPD, TwoWire &w);
     void writeRegister(uint8_t reg, uint8_t data);
+    uint8_t readRegister(uint8_t reg);
     void begin();
     void calibrate();
     void update();
+    bool dataAvailable();
     void getAngleAccel(int16_t Ax, int16_t Ay, int16_t Az);
     void getAngleGyro(int16_t Gx, int16_t Gy, int16_t Gz);
     void updateFusedData();
     void updatePR();
+    void setAlpha(float newAlpha);
     float getFusedPitch();
     float getFusedRoll();
     float getFusedYaw();
@@ -43,6 +46,7 @@ class Gyro {
     float getGyZ_rad();
     float fAll[6];
     float fPitch, fRoll, fYaw;
+    
 
   private:
     uint8_t _MPD;
@@ -58,8 +62,12 @@ class Gyro {
     int16_t AcXcal, AcYcal, AcZcal, Tmpcal, GyXcal, GyYcal, GyZcal;
     float pitchCal, rollCal, yawCal;
     float fgx, fgy, fgz, fax, fay, faz;
-    
+    float alpha = 0.9; // you can adjust this value to change the amount of filtering
+    float newAlpha;
+    float prevAcX = 0, prevAcY = 0, prevAcZ = 0;
     float deltat;
+    float threshold = 25;
+    float prevPitch = 0, prevRoll = 0;
     
 };
 

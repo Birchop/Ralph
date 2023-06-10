@@ -8,8 +8,8 @@ class X6B {
     X6B(int RX_PIN, uart_inst_t* UART_ID, int BAUD_RATE, int CHANNELS_TO_READ);
     void begin();
     void update();
-    uint16_t getRxChannel(uint8_t channel);
-    float getChannelValue(uint8_t channel);
+    uint16_t getRxChannel(uint8_t Channel);
+    float getChannelValue(uint8_t Channel);
 
   private:
     int _RX_PIN;
@@ -20,6 +20,7 @@ class X6B {
     uint8_t _ibusIndex;
     uint16_t _channelValues[14]; //CHANNELS_TO_READ
     float _channel[14]; //CHANNELS_TO_READ
+    int success = 0;
 };
 
 #endif

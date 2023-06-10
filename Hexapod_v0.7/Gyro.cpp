@@ -13,15 +13,50 @@ void Gyro::writeRegister(uint8_t reg, uint8_t data) {
   _wire->endTransmission(true);
 }
 
+uint8_t Gyro::readRegister(uint8_t reg) {
+  _wire->beginTransmission(_MPD);
+  _wire->write(reg);
+  _wire->endTransmission(false); // Send a repeated start (false)
+  _wire->requestFrom(_MPD, (uint8_t)1); // Request one byte
+  if (_wire->available()) {
+    return _wire->read();
+  } else {
+    return 0; // Return 0 if no data available
+  }
+}
+
 void Gyro::begin() {
- 
-  writeRegister(0x6B, 0); // PWR_MGMT_1 Reg    -   Wake up
-  writeRegister(0x19, 0); // SMPLRT_DIV Reg    -   Sets to maximum sample rate
-  writeRegister(0x1A, 6); // CONFIG Reg        -   Set DLPF_CFG to 6 (5Hz bandwidth)
-  writeRegister(0x1B, 0); // GYRO_CONFIG Reg   -   Set FS_SEL to 0 (±250 °/s)
-  writeRegister(0x1C, 0); // ACCEL_CONFIG Reg  -   Set AFS_SEL to 0 (±2g)
+  writeRegister(0x6B, 0x80); // PWR_MGMT_1 Reg    -   Reset
+  delay(100);
+  writeRegister(0x6B, 0x00); // PWR_MGMT_1 Reg    -   Wake up
+  delay(100);
+  writeRegister(0x6B, 0x03); // PWR_MGMT_1 Reg    -   Set Clock
+  delay(200);
+  writeRegister(0x1A, 0x03); // CONFIG Reg        -   Set to 250Hz bandwidth
+  writeRegister(0x19, 0x03); // SMPLRT_DIV Reg    -   Set to 1k sample rate
+  
+  uint8_t c = readRegister(0x1B);
+  c = c & ~0x03;
+  c = c & ~0x18; 
+  c = c | (uint8_t)3 << 3;
+  writeRegister(0x1B, c); // GYRO_CONFIG Reg   -   Set Gyro range
+  
+  c = readRegister(0x1C);
+  c = c & ~0x18; 
+  c = c | (uint8_t)3 << 3;
+  writeRegister(0x1C, c); // ACCEL_CONFIG Reg  -   Set Accel range
+  
+  writeRegister(0x1A, 0x03);  // CONFIG Reg        -   Set to 250Hz again(per FastIMU)
+  writeRegister(0x37, 0x22);  // INT_CONFIG
+  writeRegister(0x38, 0x01); // INT_ENABLE Reg -   Enable interrupts
+  delay(100);
+  
+
+
   calibrate();
 }
+
+
 
 void Gyro::calibrate() {
   int16_t AcXcalArr[100];
@@ -46,9 +81,9 @@ void Gyro::calibrate() {
   for (int i = 0; i < 50; i++) {
     _wire->beginTransmission(_MPD);
     _wire->write(0x3B);
-    _wire->endTransmission(false);
+    _wire->endTransmission(true);
     _wire->requestFrom(_MPD, 14, false);
-    
+    if (_wire->available() >= 14) {
     AcXcalArr[i] = _wire->read() << 8 | _wire->read();
     AcYcalArr[i] = _wire->read() << 8 | _wire->read();
     AcZcalArr[i] = _wire->read() << 8 | _wire->read();
@@ -56,12 +91,17 @@ void Gyro::calibrate() {
     GyXcalArr[i] = _wire->read() << 8 | _wire->read();
     GyYcalArr[i] = _wire->read() << 8 | _wire->read();
     GyZcalArr[i] = _wire->read() << 8 | _wire->read();
+    } else {
+      Serial.println("Gyro has shit the bed, again.");
+      begin();
+      return; // Try again
+    }
     getAngleAccel(AcXcalArr[i], AcYcalArr[i], AcZcalArr[i]);
     pitchArr[i] = getPitch();
     rollArr[i] = getRoll();
     _wire->endTransmission(true);
     Serial.print(".");
-    delay(1);
+    delay(50);
   }
   Serial.println(":Data captured");
   
@@ -117,25 +157,15 @@ void Gyro::calibrate() {
 }
 
 void Gyro::update() {
-  unsigned long startMicros = micros();
-   Serial.print("Gyro start transmission  ");
+  //Serial.println("Gyro updating");
+  //unsigned long startMicros = micros();
+   //Serial.print("Gyro start transmission  ");
   _wire->beginTransmission(_MPD);
   _wire->write(0x3B);
-  _wire->endTransmission(false);
+  _wire->endTransmission(true);
   _wire->requestFrom(_MPD, 14, false);
-  Serial.print("Gyro request data  ");
-  
+  //Serial.print("Gyro request data  ");
 
-  if (micros() - startMicros > 10000) { // Check if more than 2.5ms has passed
-    writeRegister(0x6B, 0); // PWR_MGMT_1 Reg - Wake up
-    writeRegister(0x19, 0); // SMPLRT_DIV Reg    -   Sets to maximum sample rate
-    writeRegister(0x1A, 6); // CONFIG Reg        -   Set DLPF_CFG to 6 (5Hz bandwidth)
-    writeRegister(0x1B, 0); // GYRO_CONFIG Reg   -   Set FS_SEL to 0 (±250 °/s)
-    writeRegister(0x1C, 0); // ACCEL_CONFIG Reg  -   Set AFS_SEL to 0 (±2g)
-    calibrate();
-    Serial.print("Gyro timeout  ");
-    return; // Exit the function early
-  }
   if (_wire->available() >= 14) {
   AcX = (_wire->read() << 8 | _wire->read()) - (AcXcal < 0 ? -AcXcal : AcXcal);
   AcY = (_wire->read() << 8 | _wire->read()) - (AcYcal < 0 ? AcYcal : -AcYcal);
@@ -147,61 +177,88 @@ void Gyro::update() {
 
   _wire->endTransmission(true);
 
+int16_t gravity = 16384;
+AcX_g = AcX / (float)gravity;
+  AcY_g = AcY / (float)gravity;
+  AcZ_g = AcZ / (float)gravity;
+  GyX_dg = GyX / 131.0;
+  GyY_dg = GyY / 131.0;
+  GyZ_dg = GyZ / 131.0;
+  GyX_rad = GyX_dg * DEG_TO_RAD;
+  GyY_rad = GyY_dg * DEG_TO_RAD;
+  GyZ_rad = GyZ_dg * DEG_TO_RAD;
+/*
+  if (abs(AcX - prevAcX) > threshold) {
+    AcX = alpha * AcX + (1 - alpha) * prevAcX;
+    prevAcX = AcX;
+  } else { AcX = prevAcX; }
+  if (abs(AcY - prevAcY) > threshold) {
+    AcY = alpha * AcY + (1 - alpha) * prevAcY;
+    prevAcY = AcY;
+  } else { AcY = prevAcY; }
+  if (abs(AcZ - prevAcZ) > threshold) {
+    AcZ = alpha * AcZ + (1 - alpha) * prevAcZ;
+    prevAcZ = AcZ;
+  } else { AcZ = prevAcZ; }
+//Serial.println("AcX: " + String(AcX) + " AcY: " + String(AcY) + " AcZ: " + String(AcZ));
+    */
   tx = Tmp + tcal;
   t = tx / 340 + 36.53;
   tf = (t * 9 / 5) + 32;
-  Serial.print("Gyro data obtained  ");
+  //Serial.print("Gyro data obtained  ");
   getAngleAccel(AcX, AcY, AcZ);
+  updateFusedData();
 } else {
-  // Not enough data available. You could print an error message or take other action here.
   Serial.println("Gyro has shit the bed, again.");
+  begin();
+  return;
 }
   // Gravity value
-  //int16_t gravity = 16384;
-/*
+  
+
   // Calculate the gravity components for each axis
-  int16_t gravityX = gravity * sin(roll);
-  int16_t gravityY = gravity * sin(pitch);
-  int16_t gravityZ = gravity * cos(pitch) * cos(roll);
+  //int16_t gravityX = gravity * sin(roll);
+  //int16_t gravityY = gravity * sin(pitch);
+  //int16_t gravityZ = gravity * cos(pitch) * cos(roll);
 
   // Subtract the gravity components from the accelerometer readings
   //AcX = ((AcX - AcXcal) - gravityX);
   //AcY = ((AcY - AcYcal) - gravityY);
   //AcZ = ((AcZ - AcZcal) - gravityZ);
 
-  AcX_noG = AcX - gravityX;
-  AcY_noG = AcY - gravityY;
-  AcZ_noG = AcZ - gravityZ;
-*/
-  /*AcX_g = AcX / (float)gravity;
-  AcY_g = AcY / (float)gravity;
-  AcZ_g = AcZ / (float)gravity;
-  //GyX_dg = GyX / 131.0;
-  //GyY_dg = GyY / 131.0;
-  //GyZ_dg = GyZ / 131.0;
-  GyX_rad = GyX_dg * DEG_TO_RAD;
-  GyY_rad = GyY_dg * DEG_TO_RAD;
-  GyZ_rad = GyZ_dg * DEG_TO_RAD;
-  //getAngleGyro(GyX_dg, GyY_dg, GyZ_dg);*/
+  //AcX_noG = AcX - gravityX;
+  //AcY_noG = AcY - gravityY;
+  //AcZ_noG = AcZ - gravityZ;
+
+  
+  //getAngleGyro(GyX_dg, GyY_dg, GyZ_dg);
 }
 
 void Gyro::getAngleAccel(int16_t Ax, int16_t Ay, int16_t Az) {
   float x = Ax;
   float y = Ay;
   float z = Az;
-  if (x != 0.00f && y != 0.00f && z != 0.00f) {
-  pitch = atan(x / sqrt((y * y) + (z * z)));
-  roll = atan(y / sqrt((x * x) + (z * z)));
+  if (x != 0.00f && (y != 0.00f || z != 0.00f)) {
+    float a = sqrt((y * y) + (z * z));
+    float tempPitch = atan2(x, a);
+    pitch = alpha * tempPitch + (1 - alpha) * pitch;
+    prevPitch = pitch;
+  } else {
+    pitch = prevPitch;
+  }
+  if (y != 0.00f && (x != 0.00f || z != 0.00f)) {
+    float  a = sqrt((x * x) + (z * z));
+    float tempRoll = atan2(y, a);
+    roll = alpha * tempRoll + (1 - alpha) * roll;
+    prevRoll = roll;
+  } else {
+    roll = prevRoll;
+  }
   //pitch *= RAD_TO_DEG;
   //roll *= RAD_TO_DEG;
   pitch = pitch;
   roll = roll;
-  //pitch = pitch - pitchCal;
-  //roll = roll - pitchCal;
-  } else {
-    pitch = 0;
-    roll = 0;
-  }
+  
 }
 
 void Gyro::getAngleGyro(int16_t gx, int16_t gy, int16_t gz) {
@@ -214,12 +271,12 @@ void Gyro::getAngleGyro(int16_t gx, int16_t gy, int16_t gz) {
   pitchGyro += gy;
   rollGyro += gx;
 
-  // Note: This simple integration method accumulates error over time,
+  // Note: This integration method accumulates error over time,
   // in other words; this sucks
 }
 
 void Gyro::updateFusedData() {
-  update();
+  //update();
   fgx = getGyX_rad();
   fgy = getGyY_rad();
   fgz = getGyZ_rad();
@@ -228,9 +285,9 @@ void Gyro::updateFusedData() {
   faz = getAcZ_g();
   deltat = fusion.deltatUpdate();
   fusion.MadgwickUpdate(fgx, fgy, fgz, fax, fay, faz, deltat);
-  fPitch = fusion.getPitch();
-  fRoll = fusion.getRoll();
-  fYaw = fusion.getYaw();
+  fPitch = fusion.getPitchRadians();
+  fRoll = fusion.getRollRadians();
+  fYaw = fusion.getYawRadians();
 }
 
 void Gyro::updatePR() {
@@ -241,6 +298,14 @@ void Gyro::updatePR() {
 
     //fRoll *= DEG_TO_RAD;
     //fPitch *= DEG_TO_RAD;
+}
+
+void Gyro::setAlpha(float newAlpha) {
+  alpha = newAlpha;
+}
+
+bool Gyro::dataAvailable() { 
+  return (readRegister(0x3A) & 0x01);
 }
 
 float Gyro::getFusedPitch() {

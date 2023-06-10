@@ -26,6 +26,7 @@ class Leg {
 
     float x, y, z;
     float q1, q2, q3;
+    float prevQ1, prevQ2, prevQ3;
 
     int angleToPWM(int minPWM, int maxPWM, int minAngle, int maxAngle, int angle);
 

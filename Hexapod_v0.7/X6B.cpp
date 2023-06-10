@@ -19,7 +19,8 @@ void X6B::begin() {
 }
 
 void X6B::update() {
-  while (uart_is_readable(_UART_ID)) {
+  unsigned long timeOut = micros();
+  while (uart_is_readable(_UART_ID) && (micros() - timeOut) < 500000) {
     uint8_t incomingByte = uart_getc(_UART_ID);
     if (incomingByte == 0x20) {
       incomingByte = uart_getc(_UART_ID);
@@ -44,8 +45,6 @@ void X6B::update() {
               _channelValues[i] = map(getRxChannel(i), 1000, 2000, 0, 2);
               _channel[i] = constrain(_channelValues[i], 0, 2);
             }
-            
-
             return;
           }
         }
@@ -53,17 +52,17 @@ void X6B::update() {
   }
 }
 
-uint16_t X6B::getRxChannel(uint8_t channel) {
-  if (channel >= _CHANNELS_TO_READ) {
+uint16_t X6B::getRxChannel(uint8_t Channel) {
+  if (Channel >= _CHANNELS_TO_READ) {
     return 0;
   }
-  uint16_t channelValue = _ibusBuff[2 * channel] | (_ibusBuff[2 * channel + 1] << 8);
+  uint16_t channelValue = _ibusBuff[2 * Channel] | (_ibusBuff[2 * Channel + 1] << 8);
   return channelValue;
 }
 
-float X6B::getChannelValue(uint8_t channel) {
-  if (channel >= _CHANNELS_TO_READ) {
+float X6B::getChannelValue(uint8_t Channel) {
+  if (Channel >= _CHANNELS_TO_READ) {
     return 0;
   }
-  return _channel[channel];
+  return _channel[Channel];
 }
