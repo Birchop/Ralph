@@ -1,7 +1,6 @@
 #ifndef X6B_H
 #define X6B_H
 #include <Arduino.h>
-//#include <hardware/uart.h>
 
 class X6B {
   public:

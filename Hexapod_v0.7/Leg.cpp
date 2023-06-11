@@ -8,7 +8,7 @@ void Leg::moveLeg(float x, float y, float z) {
 
   float rotatedX;
   float rotatedY;
-  // Rotate the input coordinates by the leg angle
+  // rotate the input coordinates by the leg angle
   if (baseOffset != 0) {
     float angleRad = (baseOffset) * PI / 180;
     rotatedX = x * cos(angleRad) - y * sin(angleRad);

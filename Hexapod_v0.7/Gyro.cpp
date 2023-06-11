@@ -16,8 +16,8 @@ void Gyro::writeRegister(uint8_t reg, uint8_t data) {
 uint8_t Gyro::readRegister(uint8_t reg) {
   _wire->beginTransmission(_MPD);
   _wire->write(reg);
-  _wire->endTransmission(false); // Send a repeated start (false)
-  _wire->requestFrom(_MPD, (uint8_t)1); // Request one byte
+  _wire->endTransmission(false);
+  _wire->requestFrom(_MPD, (uint8_t)1);
   if (_wire->available()) {
     return _wire->read();
   } else {
@@ -46,14 +46,10 @@ void Gyro::begin() {
   c = c | (uint8_t)3 << 3;
   writeRegister(0x1C, c); // ACCEL_CONFIG Reg  -   Set Accel range
   
-  writeRegister(0x1A, 0x03);  // CONFIG Reg        -   Set to 250Hz again(per FastIMU)
+  writeRegister(0x1A, 0x03);  // CONFIG Reg    -   Set to 250Hz again(per FastIMU)
   writeRegister(0x37, 0x22);  // INT_CONFIG
   writeRegister(0x38, 0x01); // INT_ENABLE Reg -   Enable interrupts
   delay(100);
-  
-
-
-  calibrate();
 }
 
 
@@ -92,7 +88,7 @@ void Gyro::calibrate() {
     GyYcalArr[i] = _wire->read() << 8 | _wire->read();
     GyZcalArr[i] = _wire->read() << 8 | _wire->read();
     } else {
-      Serial.println("Gyro has shit the bed, again.");
+      Serial.println("Gyro error, restarting.");
       begin();
       return; // Try again
     }
@@ -157,14 +153,10 @@ void Gyro::calibrate() {
 }
 
 void Gyro::update() {
-  //Serial.println("Gyro updating");
-  //unsigned long startMicros = micros();
-   //Serial.print("Gyro start transmission  ");
   _wire->beginTransmission(_MPD);
   _wire->write(0x3B);
   _wire->endTransmission(true);
   _wire->requestFrom(_MPD, 14, false);
-  //Serial.print("Gyro request data  ");
 
   if (_wire->available() >= 14) {
   AcX = (_wire->read() << 8 | _wire->read()) - (AcXcal < 0 ? -AcXcal : AcXcal);
@@ -213,15 +205,12 @@ AcX_g = AcX / (float)gravity;
   begin();
   return;
 }
-  // Gravity value
   
 
-  // Calculate the gravity components for each axis
   //int16_t gravityX = gravity * sin(roll);
   //int16_t gravityY = gravity * sin(pitch);
   //int16_t gravityZ = gravity * cos(pitch) * cos(roll);
 
-  // Subtract the gravity components from the accelerometer readings
   //AcX = ((AcX - AcXcal) - gravityX);
   //AcY = ((AcY - AcYcal) - gravityY);
   //AcZ = ((AcZ - AcZcal) - gravityZ);
@@ -256,8 +245,6 @@ void Gyro::getAngleAccel(int16_t Ax, int16_t Ay, int16_t Az) {
   }
   //pitch *= RAD_TO_DEG;
   //roll *= RAD_TO_DEG;
-  pitch = pitch;
-  roll = roll;
   
 }
 

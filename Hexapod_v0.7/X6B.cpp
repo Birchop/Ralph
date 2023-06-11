@@ -1,5 +1,4 @@
 #include <Arduino.h>
-//#include <hardware/uart.h>
 #include "X6B.h"
 
 X6B::X6B(int RX_PIN, uart_inst_t* UART_ID, int BAUD_RATE, int CHANNELS_TO_READ) {
