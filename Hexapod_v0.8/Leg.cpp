@@ -8,7 +8,7 @@ void Leg::moveLeg(float x, float y, float z) {
 
   float rotatedX;
   float rotatedY;
-  // Rotate the input coordinates by the leg angle
+  // rotate the input coordinates by the leg angle
   if (baseOffset != 0) {
     float angleRad = (baseOffset) * PI / 180;
     rotatedX = x * cos(angleRad) - y * sin(angleRad);
@@ -18,22 +18,16 @@ void Leg::moveLeg(float x, float y, float z) {
     rotatedY = y;
   }
   q1 = atan2(rotatedY, rotatedX);
+  if (isnan(q1)) {q1 = prevQ1;} else {q1 = q1 * 180 / PI; q1 = constrain(q1, q1Min, q1Max);}
   float L1 = sqrt(rotatedX * rotatedX + rotatedY * rotatedY) - l1;
   float L = sqrt(L1 * L1 + z * z);
   float alpha = acos((l2 * l2 + L * L - l3 * l3) / (2 * l2 * L));
   float beta = atan2(z, L1);
   q2 = alpha + beta;
+  if (isnan(q2)) {q2 = prevQ2;} else {q2 = q2 * 180 / PI; q2 = map(q2, -90, 90, 180, 0);}
+  
   q3 = acos((l2 * l2 + l3 * l3 - L * L) / (2 * l2 * l3));
-
-  q1 = q1 * 180 / PI;
-  q2 = q2 * 180 / PI;
-  q3 = q3 * 180 / PI;
-
-  q2 = map(q2, -90, 90, 180, 0);
-  q3 = map(q3, -90, 90, 0, 180);
-  q3 = q3 - 120;
-
-  q1 = constrain(q1, q1Min, q1Max);
+  if (isnan(q3)) {q3 = prevQ3;} else {q3 = q3 * 180 / PI; q3 = map(q3, -90, 90, 0, 180); q3 = q3 - 120;}
 
   float q1r = map(q1, 0, 180, 180, 0);
   float q2r = map(q2, 0, 180, 180, 0);
@@ -59,6 +53,9 @@ void Leg::moveLeg(float x, float y, float z) {
     Serial.println("Failed to initialise Leg object");
     return;
   }
+  prevQ1 = q1;
+  prevQ2 = q2;
+  prevQ3 = q3;
 }
 
 void Leg::homeLeg() {
