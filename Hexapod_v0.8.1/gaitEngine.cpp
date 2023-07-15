@@ -116,19 +116,20 @@ void gaitEngine::move(Gait gait, float stride, float strafe, float yaw, float st
         float xDest[6];
         float yDest[6];
         //calculate current iteration x,y coordinates
-        xDest[0] = (j == 0) ? xMin[0] + xDiff[0] : xMax[0] - xDiff[0];
+        xDest[0] = (j == 0) ? xMax[0] - xDiff[0] : xMin[0] + xDiff[0];
         xDest[1] = (j == 1) ? xMin[1] + xDiff[1] : xMax[1] - xDiff[1];
         xDest[2] = (j == 1) ? xMin[2] + xDiff[2] : xMax[2] - xDiff[2];
-        xDest[3] = (j == 0) ? xMin[3] + xDiff[3] : xMax[3] - xDiff[3];
+        xDest[3] = (j == 0) ? xMax[3] - xDiff[3] : xMin[3] + xDiff[3];
         xDest[4] = (j == 0) ? xMin[4] + xDiff[4] : xMax[4] - xDiff[4];
-        xDest[5] = (j == 1) ? xMin[5] + xDiff[5] : xMax[5] - xDiff[5];
+        xDest[5] = (j == 0) ? xMin[5] + xDiff[5] : xMax[5] - xDiff[5];
 
-        yDest[0] = (j == 0) ? yMin[0] + yDiff[0] : yMax[0] - yDiff[0];
+        yDest[0] = (j == 0) ? yMax[0] - yDiff[0] : yMin[0] + yDiff[0];
         yDest[1] = (j == 1) ? yMin[1] + yDiff[1] : yMax[1] - yDiff[1];
         yDest[2] = (j == 1) ? yMin[2] + yDiff[2] : yMax[2] - yDiff[2];
-        yDest[3] = (j == 0) ? yMin[3] + yDiff[3] : yMax[3] - yDiff[3];
+        yDest[3] = (j == 0) ? yMax[3] - yDiff[3] : yMin[3] + yDiff[3];
         yDest[4] = (j == 0) ? yMin[4] + yDiff[4] : yMax[4] - yDiff[4];
-        yDest[5] = (j == 1) ? yMin[5] + yDiff[5] : yMax[5] - yDiff[5];
+        yDest[5] = (j == 0) ? yMin[5] + yDiff[5] : yMax[5] - yDiff[5];
+
 
         //move legs
         allLegs[0]->moveLegGlobal(xDest[0], yDest[0], (j == 0) ? zArc[i] : ground);
@@ -152,15 +153,15 @@ void gaitEngine::move(Gait gait, float stride, float strafe, float yaw, float st
       if (j > 2) {
         j = 0;
       }
-      
-      for (int i = 0; i < 2; i++) { // Calculate start & end x,y coordinates | apply strafe, stride & yaw | Pair 1 | Full lift and drop
-        int t = (j==0) ? 0 : ((j==1) ? 2 : 1); //Cycle legs, need to use the correct defaultX/Y coords for each leg. Probably a better way of doing this.. 
-        int k = (j==0) ? 5 : ((j==1) ? 3 : 4);
-        xMin[i] = defaultX[(i==0) ? t : k] - hStride;
-        xMaxNoRotation[i] = defaultX[(i==0) ? t : k] + hStride;
 
-        yMin[i] = defaultY[(i==0) ? t : k] - hStrafe;
-        yMaxNoRotation[i] = defaultY[(i==0) ? t : k] + hStrafe;
+      for (int i = 0; i < 2; i++) { // Calculate start & end x,y coordinates | apply strafe, stride & yaw | Pair 1 | Full lift and drop
+        int t = (j == 0) ? 0 : ((j == 1) ? 2 : 1); //Cycle legs, need to use the correct defaultX/Y coords for each leg. Probably a better way of doing this..
+        int k = (j == 0) ? 5 : ((j == 1) ? 3 : 4);
+        xMin[i] = defaultX[(i == 0) ? t : k] - hStride;
+        xMaxNoRotation[i] = defaultX[(i == 0) ? t : k] + hStride;
+
+        yMin[i] = defaultY[(i == 0) ? t : k] - hStrafe;
+        yMaxNoRotation[i] = defaultY[(i == 0) ? t : k] + hStrafe;
         if (yaw != 0) {
           xMax[i] = xMaxNoRotation[i] * cos(yaw) - yMaxNoRotation[i] * sin(yaw);
           yMax[i] = yMaxNoRotation[i] * sin(yaw) + xMaxNoRotation[i] * cos(yaw);
@@ -171,13 +172,13 @@ void gaitEngine::move(Gait gait, float stride, float strafe, float yaw, float st
       }
 
       for (int i = 2; i < 4; i++) { // Calculate start & end x,y coordinates | apply strafe, stride & yaw | Pair 2 | Ending backstroke
-        int t = (j==0) ? 2 : ((j==1) ? 1 : 0);
-        int k = (j==0) ? 3 : ((j==1) ? 4 : 5);
-        xMin[i] = defaultX[(i==2) ? t : k] - hStride;
-        xMaxNoRotation[i] = defaultX[(i==2) ? t : k];
+        int t = (j == 0) ? 2 : ((j == 1) ? 1 : 0);
+        int k = (j == 0) ? 3 : ((j == 1) ? 4 : 5);
+        xMin[i] = defaultX[(i == 2) ? t : k] - hStride;
+        xMaxNoRotation[i] = defaultX[(i == 2) ? t : k];
 
-        yMin[i] = defaultY[(i==2) ? t : k] - hStrafe;
-        yMaxNoRotation[i] = defaultY[(i==2) ? t : k];
+        yMin[i] = defaultY[(i == 2) ? t : k] - hStrafe;
+        yMaxNoRotation[i] = defaultY[(i == 2) ? t : k];
         if (yaw != 0) {
           xMax[i] = xMaxNoRotation[i] * cos(yaw) - yMaxNoRotation[i] * sin(yaw);
           yMax[i] = yMaxNoRotation[i] * sin(yaw) + xMaxNoRotation[i] * cos(yaw);
@@ -188,13 +189,13 @@ void gaitEngine::move(Gait gait, float stride, float strafe, float yaw, float st
       }
 
       for (int i = 4; i < 6; i++) { // Calculate start & end x,y coordinates | apply strafe, stride & yaw | Pair 3 | Starting backstroke
-        int t = (j==0) ? 1 : ((j==1) ? 0 : 2);
-        int k = (j==0) ? 4 : ((j==1) ? 5 : 3);
-        xMin[i] = defaultX[(i==4) ? t : k];
-        xMaxNoRotation[i] = defaultX[(i==4) ? t : k] + hStride;
+        int t = (j == 0) ? 1 : ((j == 1) ? 0 : 2);
+        int k = (j == 0) ? 4 : ((j == 1) ? 5 : 3);
+        xMin[i] = defaultX[(i == 4) ? t : k];
+        xMaxNoRotation[i] = defaultX[(i == 4) ? t : k] + hStride;
 
-        yMin[i] = defaultY[(i==4) ? t : k];
-        yMaxNoRotation[i] = defaultY[(i==4) ? t : k] + hStrafe;
+        yMin[i] = defaultY[(i == 4) ? t : k];
+        yMaxNoRotation[i] = defaultY[(i == 4) ? t : k] + hStrafe;
         if (yaw != 0) {
           xMax[i] = xMaxNoRotation[i] * cos(yaw) - yMaxNoRotation[i] * sin(yaw);
           yMax[i] = yMaxNoRotation[i] * sin(yaw) + xMaxNoRotation[i] * cos(yaw);
@@ -270,17 +271,17 @@ void gaitEngine::move(Gait gait, float stride, float strafe, float yaw, float st
         xMax[0] = xMaxNoRotation[0];
         yMax[0] = yMaxNoRotation[0];
       }
-  
-  break;
 
-case wave:
+      break;
 
-  break;
+    case wave:
 
-default:
-  return;
-  break;
-}
+      break;
+
+    default:
+      return;
+      break;
+  }
 }
 
 void gaitEngine::setAdduction(float newAdduction) {
