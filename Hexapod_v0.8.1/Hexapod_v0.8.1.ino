@@ -98,6 +98,7 @@ void setup() {
   GE.setAdduction(25.0f);
   GE.setIncrement(50);
   GE.setStanceWidth(30);
+  GE.setClearance(50.0f);
 }
 
 void setup1() {
@@ -112,7 +113,24 @@ void setup1() {
 }
 
 void loop() {
-  Serial.println("Safety Branch");
+  /*
+  for (int a = 0; a < 12; a++) {
+    if (!mtx1) {
+    transferPitchRoll();
+  }
+  if (!mtx2) {
+    transferChannels();
+  }
+  if (channels[7] > 1900) {
+    Serial.println("Control Enabled - TRI");
+    //gaitEngine(tri, 50, 0, 0, 0, 25, -175, 50, 50);
+    GE.move(tri, channels[1], channels[2], 0, -200.0f + channels[3]); 
+  } else {
+    Serial.println("Control Disabled");
+  }
+  }*//*
+  for (int a = 0; a < 12; a++) {
+    Serial.println("Safety Branch");
   //delay(50);
   if (!mtx1) {
     transferPitchRoll();
@@ -121,12 +139,32 @@ void loop() {
     transferChannels();
   }
   if (channels[7] > 1900) {
-    Serial.println("Control Enabled");
+    Serial.println("Control Enabled - WAVE");
     //gaitEngine(tri, 50, 0, 0, 0, 25, -175, 50, 50);
-    GE.move(tri, channels[1], channels[2], channels[4], -200.0f + channels[3]); 
+    GE.move(wave, channels[1], channels[2], 0, -200.0f + channels[3]); 
   } else {
     Serial.println("Control Disabled");
   }
+  } */
+/*
+  for (int i = 0; i <6; i++) {
+    for (int j = 0; j < 50; j++) {
+      if (i == 2 || i == 3) {
+      float x = j1OriginX[i] + 100;
+      float y = j1OriginY[i] + j;
+      float z = -210;
+      Legs[i]->moveLegGlobal(x,y,z);  
+      } else {
+      float x = j1OriginX[i] + j;
+      float y = j1OriginY[i] + 100;
+      float z = -210;
+      Legs[i]->moveLegGlobal(x,y,z);
+      }
+      }
+      Legs[i]->homeLeg();
+    }
+   */
+   GE.move(wave, 50.0f, 0.0f, 0.0f, -200.0f + channels[3]);
 }
 
 void loop1() {

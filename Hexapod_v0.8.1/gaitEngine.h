@@ -26,6 +26,12 @@ public:
   void setGround(float ground);
   void setClearance(float clearance);
   void setGait(Gait newGait);
+  void shiftRightLeg(Leg** legs, int size, int shiftAmount);
+  void shiftRight(float* coords, int size, int shiftAmount);
+  void resetLegArray();
+  bool rangeCheck(float value, float range);
+  void shiftLeftLeg(Leg** legs, int size, int shiftAmount);
+  void shiftLeft(float* arr, int size, int shiftAmount);
 
 private:
   float stride = 0.0f, strafe = 0.0f, yaw = 0.0f, stanceWidth = 0.0f, ground = -200.0f, clearance = 45.0f, adduction = 25.0f;
@@ -33,8 +39,12 @@ private:
   int j = 0;
 
   Leg** allLegs;
+  Leg* originalLegs[6];
+  Leg* waveLegs[6];
+  
 
   Gait gait;
+  Gait previousGait;
 
   /*
      Input variables:

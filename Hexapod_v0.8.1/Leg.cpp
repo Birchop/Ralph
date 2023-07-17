@@ -51,13 +51,13 @@ void Leg::moveLegGlobal(float x, float y, float z) { //No PID
 void Leg::moveLegLocal(float x, float y, float z, float offsetAngle, float currQ1, float currQ2, float currQ3) { //With PID
   float q1 = atan2(y, x);
   if (isnan(q1)) {
-    q1 = 0;
+    q1 = 90;
     Serial.print(" Q1 NaN  ");
   } else {
     q1 = q1 * 180 / PI;
     q1 = floatMap(q1, offsetAngle - 90, offsetAngle + 90, 0, 180);
     q1 = constrain(q1, q1Min, q1Max);
-    Serial.print(name + "| Q1: " + String(q1));
+    //Serial.print(name + "| Q1: " + String(q1));
   }
 
   float L1 = sqrt(x * x + y * y) - l1;
@@ -66,25 +66,25 @@ void Leg::moveLegLocal(float x, float y, float z, float offsetAngle, float currQ
   float beta = atan2(z, L1);
   float q2 = alpha + beta;
   if (isnan(q2)) {
-    q2 = 0;
-    Serial.print(" Q2 NaN  ");
+    q2 = 90;
+    //Serial.print(" Q2 NaN  ");
   } else {
     q2 = q2 * 180 / PI;
     q2 = floatMap(q2, -90, 90, 180, 0);
-    Serial.print(" Q2: " + String(q2));
+    //Serial.print(" Q2: " + String(q2));
   }
 
   float q3 = acos((l2 * l2 + l3 * l3 - L * L) / (2 * l2 * l3));
   if (isnan(q3)) {
-    q3 = 0;
-    Serial.print(" Q3 NaN  ");
+    q3 = 90;
+    //Serial.print(" Q3 NaN  ");
   } else {
     q3 = q3 * 180 / PI;
     q3 = floatMap(q3, -90, 90, 0, 180);
     q3 = q3 - 120;
-    Serial.print(" Q3: " + String(q3));
+    //Serial.print(" Q3: " + String(q3));
   }
-  Serial.println(" XYZ: " + String(x) + ", " + String(y) + ", " + String(z));
+  //Serial.println(" XYZ: " + String(x) + ", " + String(y) + ", " + String(z));
 
   q1NoPID = q1;
   q2NoPID = q2;
@@ -141,13 +141,13 @@ void Leg::moveLegLocal(float x, float y, float z, float offsetAngle, float currQ
 void Leg::moveLegLocal(float x, float y, float z, float offsetAngle) { //No PID
   float q1 = atan2(y, x);
   if (isnan(q1)) {
-    q1 = 0;
+    q1 = prevQ1;
     Serial.print(" Q1 NaN  ");
   } else {
     q1 = q1 * 180 / PI;
     q1 = floatMap(q1, offsetAngle - 90, offsetAngle + 90, 0, 180);
     q1 = constrain(q1, q1Min, q1Max);
-    Serial.print(name + "| Q1: " + String(q1));
+    //Serial.print(name + "| Q1: " + String(q1));
   }
 
   float L1 = sqrt(x * x + y * y) - l1;
@@ -156,25 +156,25 @@ void Leg::moveLegLocal(float x, float y, float z, float offsetAngle) { //No PID
   float beta = atan2(z, L1);
   float q2 = alpha + beta;
   if (isnan(q2)) {
-    q2 = 0;
+    q2 = prevQ2;
     Serial.print(" Q2 NaN  ");
   } else {
     q2 = q2 * 180 / PI;
     q2 = floatMap(q2, -90, 90, 180, 0);
-    Serial.print(" Q2: " + String(q2));
+    //Serial.print(" Q2: " + String(q2));
   }
 
   float q3 = acos((l2 * l2 + l3 * l3 - L * L) / (2 * l2 * l3));
   if (isnan(q3)) {
-    q3 = 0;
+    q3 = prevQ3;
     Serial.print(" Q3 NaN  ");
   } else {
     q3 = q3 * 180 / PI;
     q3 = floatMap(q3, -90, 90, 0, 180);
     q3 = q3 - 120;
-    Serial.print(" Q3: " + String(q3));
+    //Serial.print(" Q3: " + String(q3));
   }
-  Serial.println(" XYZ: " + String(x) + ", " + String(y) + ", " + String(z));
+  //Serial.println(" XYZ: " + String(x) + ", " + String(y) + ", " + String(z));
   float q1r = floatMap(q1, 0, 180, 180, 0);
   float q2r = floatMap(q2, 0, 180, 180, 0);
   float q3r = floatMap(q3, 0, 180, 180, 0);

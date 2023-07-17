@@ -18,7 +18,10 @@ class Leg {
     float joint3NoPID();
     float q1NoPID, q2NoPID, q3NoPID;
     float floatMap(float value, float currMin, float currMax, float desiredMin, float desiredMax);
-    
+    String getName() const {
+      return name;
+    }
+
 
   private:
     String name;
