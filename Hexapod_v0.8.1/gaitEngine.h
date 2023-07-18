@@ -37,6 +37,9 @@ private:
   float stride = 0.0f, strafe = 0.0f, yaw = 0.0f, stanceWidth = 0.0f, ground = -200.0f, clearance = 45.0f, adduction = 25.0f;
   int increment = 50;
   int j = 0;
+  float previousStride = 0;
+  float previousStrafe = 0;
+  float hStrafe, hStride, tStrafe, tStride, qStrafe, qStride, pStrafe, pStride;
 
   Leg** allLegs;
   Leg* originalLegs[6];

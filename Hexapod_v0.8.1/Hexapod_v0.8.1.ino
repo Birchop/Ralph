@@ -141,7 +141,8 @@ void loop() {
   if (channels[7] > 1900) {
     Serial.println("Control Enabled - WAVE");
     //gaitEngine(tri, 50, 0, 0, 0, 25, -175, 50, 50);
-    GE.move(wave, channels[1], channels[2], 0, -200.0f + channels[3]); 
+    GE.move(newWave, 50, 0, 0.0f, 0, 25, -200.0f + channels[3], 45, 20);
+    //gaitEngine::move(Gait gait, float stride, float strafe, float yaw, float stanceWidth, float adduction, float ground, float clearance, int increment)
   } else {
     Serial.println("Control Disabled");
   }
@@ -164,7 +165,17 @@ void loop() {
       Legs[i]->homeLeg();
     }
    */
-   GE.move(wave, 50.0f, 0.0f, 0.0f, -200.0f + channels[3]);
+   for (int p = 0; p < 3; p++) {
+   for (int i = 0; i < 6; i++) {
+   if (p == 0) {
+   GE.move(tri, 0, 50, 0.0f, 30, 30, -200.0f, 45, 50); //done
+   } else if (p == 1) {
+    GE.move(wave, 0, 50, 0.0f, 30, 30, -200.0f, 45, 50); //done
+   } else {
+    GE.move(ripple, 0, 50, 0.0f, 30, 30, -200.0f, 45, 50); //phasing issue
+   }
+   }
+   }
 }
 
 void loop1() {
