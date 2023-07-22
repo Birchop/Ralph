@@ -8,7 +8,8 @@ enum Gait {
   tri,
   trot,
   ripple,
-  wave
+  wave,
+  test
 };
 
 class gaitEngine {

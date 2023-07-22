@@ -182,11 +182,11 @@ void Leg::moveLegLocal(float x, float y, float z, float offsetAngle) { //No PID
   prevQ2 = q2;
   prevQ3 = q3;
   if (name == "FL") {
-    setServoAngle(servo1, q1r);
+    setServoAngle(servo1, q1);
     setServoAngle(servo2, q2);
     setServoAngle(servo3, q3);
   } else if (name == "ML") {
-    setServoAngle(servo1, q1r);
+    setServoAngle(servo1, q1);
     setServoAngle(servo2, q2);
     setServoAngle(servo3, q3);
   }  else if (name == "RL") {
@@ -198,11 +198,11 @@ void Leg::moveLegLocal(float x, float y, float z, float offsetAngle) { //No PID
     setServoAngle(servo2, q2r);
     setServoAngle(servo3, q3r);
   } else if (name == "MR") {
-    setServoAngle(servo1, q1r);
+    setServoAngle(servo1, q1);
     setServoAngle(servo2, q2r);
     setServoAngle(servo3, q3r);
   } else if (name == "RR") {
-    setServoAngle(servo1, q1r);
+    setServoAngle(servo1, q1);
     setServoAngle(servo2, q2r);
     setServoAngle(servo3, q3r);
   }

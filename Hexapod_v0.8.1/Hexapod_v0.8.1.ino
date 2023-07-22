@@ -128,8 +128,8 @@ void loop() {
   } else {
     Serial.println("Control Disabled");
   }
-  }*//*
-  for (int a = 0; a < 12; a++) {
+  }*/
+  /*
     Serial.println("Safety Branch");
   //delay(50);
   if (!mtx1) {
@@ -138,15 +138,21 @@ void loop() {
   if (!mtx2) {
     transferChannels();
   }
-  if (channels[7] > 1900) {
+  if (channels[7] >= 1900) {
+    if (channels[8] >= 1900) {
     Serial.println("Control Enabled - WAVE");
     //gaitEngine(tri, 50, 0, 0, 0, 25, -175, 50, 50);
-    GE.move(newWave, 50, 0, 0.0f, 0, 25, -200.0f + channels[3], 45, 20);
+    GE.move(tri, channels[1], channels[2], channels[4], 0, 15, -200.0f + channels[3], 45, 40);
     //gaitEngine::move(Gait gait, float stride, float strafe, float yaw, float stanceWidth, float adduction, float ground, float clearance, int increment)
+    } else if (channels[8] > 1450 && channels[8] <= 1550) {
+    GE.move(wave, channels[1], channels[2], 0.0f, 0, 15, -200.0f + channels[3], 45, 40); 
+    } else if (channels[8] <= 1450) {
+    GE.move(ripple, channels[1], channels[2], 0.0f, 0, 15, -200.0f + channels[3], 45, 40);  
+    }
   } else {
     Serial.println("Control Disabled");
-  }
-  } */
+  }*/
+  
 /*
   for (int i = 0; i <6; i++) {
     for (int j = 0; j < 50; j++) {
@@ -164,18 +170,24 @@ void loop() {
       }
       Legs[i]->homeLeg();
     }
-   */
+   *//*
    for (int p = 0; p < 3; p++) {
-   for (int i = 0; i < 6; i++) {
+   for (int i = 0; i < 12; i++) {
    if (p == 0) {
-   GE.move(tri, 0, 50, 0.0f, 30, 30, -200.0f, 45, 50); //done
+   GE.move(ripple, 0, 50, 0.0f, 30, 30, -200.0f, 45, 20); //done
+   if (i == 5) { i = 11; }
    } else if (p == 1) {
-    GE.move(wave, 0, 50, 0.0f, 30, 30, -200.0f, 45, 50); //done
+    GE.move(ripple, 50, 0, 0.0f, 30, 30, -200.0f, 45, 40); //done
    } else {
-    GE.move(ripple, 0, 50, 0.0f, 30, 30, -200.0f, 45, 50); //phasing issue
+    GE.move(ripple, 0, 50, 0.0f, 30, 30, -200.0f, 45, 80); //phasing issue
    }
    }
-   }
+   }*//*
+   for (int i = -10; i <= 10; i++) {
+    GE.move(tri, 0, 40, i, 30, 25, -200.0f, 45, 40);
+    Serial.println(i);
+   }*/
+   GE.move(test, 40, 0, 0, 0, 25, -200.0f, 45, 50);
 }
 
 void loop1() {
@@ -285,7 +297,7 @@ void mapChannels() {
   channel[1] = x6b.getChannelValue(0);
   channel[2] = x6b.getChannelValue(1);
   channel[3] = map(x6b.getChannelValue(2), -85, 85, -50, 50);
-  channel[4] = x6b.getChannelValue(3);
+  channel[4] = map(x6b.getChannelValue(3), -85, 85, -20, 20);
   channel[5] = map(x6b.getChannelValue(4), 0, 100, -170, 0);
   channel[6] = map(x6b.getChannelValue(5), 0, 100, -20, 20);
   channel[7] = x6b.getRxChannel(6);

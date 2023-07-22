@@ -95,7 +95,7 @@ void gaitEngine::move(Gait gait, float stride, float strafe, float yaw, float st
   defaultX[3] = defX[3];
   defaultY[3] = defY[3];
 
-  defaultX[4] = defX[4] * cos(-adduction) - defY[4] * sin(-adduction);
+  defaultX[4] = defX[4] * cos(-  adduction) - defY[4] * sin(-adduction);
   defaultY[4] = defX[4] * sin(-adduction) + defY[4] * cos(-adduction);
 
   defaultX[5] = defX[5] * cos(adduction) - defY[5] * sin(adduction);
@@ -108,6 +108,16 @@ void gaitEngine::move(Gait gait, float stride, float strafe, float yaw, float st
       if (j > 1) {
         j = 0;
       };
+      float centerX;
+      float centerY;
+      centerX = 0;
+      centerY = 0;
+      for (int i = 0; i < 6; i++) {
+        centerX += defX[i];
+        centerY += defY[i];
+      }
+      centerX /= 6;
+      centerY /= 6;
       for (int i = 0; i < 6; i++) { // Calculate start & end x,y coordinates | apply strafe, stride & yaw
         if (i == 2 || i == 3) {
           xMin[i] = defaultX[i] - hStrafe;
@@ -121,14 +131,35 @@ void gaitEngine::move(Gait gait, float stride, float strafe, float yaw, float st
 
           yMin[i] = defaultY[i] - hStrafe;
           yMaxNoRotation[i] = defaultY[i] + hStrafe;
-        }
+        }/*
         if (yaw != 0) {
           xMax[i] = xMaxNoRotation[i] * cos(yaw) - yMaxNoRotation[i] * sin(yaw);
           yMax[i] = yMaxNoRotation[i] * sin(yaw) + xMaxNoRotation[i] * cos(yaw);
         } else {
           xMax[i] = xMaxNoRotation[i];
           yMax[i] = yMaxNoRotation[i];
-        }
+        }*/
+        /*float xRangeMin = xMin[i] - defaultX[i];
+          float yRangeMin = yMin[i] - defaultY[i];
+
+          float xRangeMax = xMaxNoRotation[i] - defaultX[i];
+          float yRangeMax = yMaxNoRotation[i] - defaultY[i];
+
+                xMin[i] = defaultX[i] + xRangeMin * cos(yaw) - yRangeMin * sin(yaw);
+                yMin[i] = defaultY[i] + xRangeMin * sin(yaw) + yRangeMin * cos(yaw);
+
+                xMax[i] = defaultX[i] + xRangeMax * cos(yaw) - yRangeMax * sin(yaw);
+                yMax[i] = defaultY[i] + xRangeMax * sin(yaw) + yRangeMax * cos(yaw);*/
+        float xRangeMin = xMin[i] - centerX;
+        float yRangeMin = yMin[i] - centerY;
+
+        float xRangeMax = xMaxNoRotation[i] - centerX;
+        float yRangeMax = yMaxNoRotation[i] - centerY;
+        xMin[i] = centerX + xRangeMin * cos(yaw) - yRangeMin * sin(yaw);
+        yMin[i] = centerY + xRangeMin * sin(yaw) + yRangeMin * cos(yaw);
+
+        xMax[i] = centerX + xRangeMax * cos(yaw) - yRangeMax * sin(yaw);
+        yMax[i] = centerY + xRangeMax * sin(yaw) + yRangeMax * cos(yaw);
       }
       for (int i = 0; i < increment; i++) { //Start step loop
         float xDiff[6];
@@ -319,34 +350,139 @@ void gaitEngine::move(Gait gait, float stride, float strafe, float yaw, float st
 
       break;
 
+      /*case ripple:
+        if (j > 2) {
+          j = 0;
+        }/*
+        for (int k = 0; k < 6; k++) {
+          if (k == j || k == j + 3) {  // Two lifting legs
+            xMin[k] = (k == 2 || k == 3) ? defaultX[k] - hStrafe : defaultX[k] - hStride;
+            xMax[k] = (k == 2 || k == 3) ? defaultX[k] + hStrafe : defaultX[k] + hStride;
+
+            yMin[k] = (k == 2 || k == 3) ? defaultY[k] - hStride : defaultY[k] - hStrafe;
+            yMax[k] = (k == 2 || k == 3) ? defaultY[k] + hStride : defaultY[k] + hStrafe;
+          } else {
+            int phaseDiff = (j - k + 6) % 3; // calculate phase difference
+            if (k == 2 || k == 3) {
+              xMin[k] = defaultX[k] - hStrafe + hStrafe * phaseDiff;  // using tStrafe and tStride (stride / 3 || strafe / 3)
+              xMax[k] = xMin[k] + tStrafe;
+
+              yMin[k] = defaultY[k] - hStride + hStride * phaseDiff;
+              yMax[k] = yMin[k] + tStride;
+            } else {
+              xMin[k] = defaultX[k] - hStride + hStride * phaseDiff;
+              xMax[k] = xMin[k] + tStride;
+
+              yMin[k] = defaultY[k] - hStrafe + hStrafe * phaseDiff;
+              yMax[k] = yMin[k] + tStrafe;
+            }
+          }
+        }*//*
+
+  for (int k = 0; k < 3; k++) {
+
+  int m = k + 3;
+  xMin[k] = (k == j) ? ((k != 2) ? defaultX[k] - hStride : defaultX[k] - hStrafe) : (((k - j + 3) % 3 == ((j == 2) ? j-2: j+1)) ? defaultX[k] : ((k != 2) ? defaultX[k] - hStride : defaultX[k] - hStrafe));
+  xMax[k] = (k == j) ? ((k != 2) ? defaultX[k] + hStride : defaultX[k] + hStrafe) : (((k - j + 3) % 3 == ((j == 2) ? j-2: j+1)) ? ((k != 2) ? defaultX[k] + hStride : defaultX[k] + hStrafe) : defaultX[k]);
+
+  xMin[m] = (k == j) ? ((m != 3) ? defaultX[m] - hStride : defaultX[m] - hStrafe) : (((k - j + 3) % 3 == ((j == 2) ? j-2: j+1)) ? defaultX[m] : ((m != 3) ? defaultX[m] - hStride : defaultX[m] - hStrafe));
+  xMax[m] = (k == j) ? ((m != 3) ? defaultX[m] + hStride : defaultX[m] + hStrafe) : (((k - j + 3) % 3 == ((j == 2) ? j-2: j+1)) ? ((m != 3) ? defaultX[m] + hStride : defaultX[m] + hStrafe) : defaultX[m]);
+
+  yMin[k] = (k == j) ? ((k != 2) ? defaultY[k] - hStrafe : defaultY[k] - hStride) : (((k - j + 3) % 3 == ((j == 2) ? j-2: j+1)) ? defaultY[k] : ((k != 2) ? defaultY[k] - hStrafe : defaultY[k] - hStride));
+  yMax[k] = (k == j) ? ((k != 2) ? defaultY[k] + hStrafe : defaultY[k] + hStride) : (((k - j + 3) % 3 == ((j == 2) ? j-2: j+1)) ? ((k != 2) ? defaultY[k] + hStrafe : defaultY[k] + hStride) : defaultY[k]) ;
+
+  yMin[m] = (k == j) ? ((m != 3) ? defaultY[m] - hStrafe : defaultY[m] - hStride) : (((k - j + 3) % 3 == ((j == 2) ? j-2: j+1)) ? defaultY[m] : ((m != 3) ? defaultY[m] - hStrafe : defaultY[m] - hStride));
+  yMax[m] = (k == j) ? ((m != 3) ? defaultY[m] + hStrafe : defaultY[m] + hStride) : (((k - j + 3) % 3 == ((j == 2) ? j-2: j+1)) ? ((m != 3) ? defaultY[m] + hStrafe : defaultY[m] + hStride) : defaultY[m]);
+
+  }
+
+
+  for (int i = 0; i < increment; i++) {
+  if (i <= hInc) {
+  zArc[i] = ground + ((clearance / hInc) * i);
+  } else {
+  int t = increment - i;
+  zArc[i] = ground + ((clearance / hInc) * t);
+  }
+  float xDiff[6];
+  float yDiff[6];
+  float x[6];
+  float y[6];
+  for (int k = 0; k < 6; k++) {//Calculate difference between start & end x,y coordinates - current increment
+  xDiff[k] = (xMin[k] > xMax[k] ? -1 : 1) * (abs(xMin[k] - xMax[k]) / increment) * i;
+  yDiff[k] = (yMin[k] > yMax[k] ? -1 : 1) * (abs(yMin[k] - yMax[k]) / increment) * i;
+  if (k == j || k == j + 3) {
+  x[k] = xMin[k] + xDiff[k];
+  y[k] = yMin[k] + yDiff[k];
+  } else {
+  x[k] = xMax[k] - xDiff[k];
+  y[k] = yMax[k] - yDiff[k];
+  }
+  allLegs[k]->moveLegGlobal(x[k], y[k], (k == j || k == j + 3) ? zArc[i] : ground);
+  Serial.println(String(j) + " " + String(allLegs[k]->getName()) + " " + String(x[k]) + " " + String(y[k]) + " " + String((j == k || j+2 == k) ? zArc[i] : ground));
+  }
+
+  }
+  j++;
+
+  break;*/
+
     case ripple:
+
       if (j > 2) {
         j = 0;
       }
+
       for (int k = 0; k < 6; k++) {
-        if (k == j || k == j + 3) {  // Two lifting legs
+        Serial.print("J: " + String(j) + " K: " + String(k));
+        if (k == j || k == j + 3) {
+
           xMin[k] = (k == 2 || k == 3) ? defaultX[k] - hStrafe : defaultX[k] - hStride;
           xMax[k] = (k == 2 || k == 3) ? defaultX[k] + hStrafe : defaultX[k] + hStride;
 
           yMin[k] = (k == 2 || k == 3) ? defaultY[k] - hStride : defaultY[k] - hStrafe;
           yMax[k] = (k == 2 || k == 3) ? defaultY[k] + hStride : defaultY[k] + hStrafe;
+
         } else {
-          int phaseDiff = (j - k + 6) % 3; // calculate phase difference
-          if (k == 2 || k == 3) {
-            xMin[k] = defaultX[k] - hStrafe + tStrafe * phaseDiff;  // using tStrafe and tStride (stride / 3 || strafe / 3)
-            xMax[k] = xMin[k] + tStrafe;
+          int phase_diff = (k - j + 6) % 3; // calculate phase difference
+          if (phase_diff == 1) {
+            if (k == 2 || k == 3) {
+              Serial.print(" | Phase Diff Mid Leg: " + String(phase_diff));
 
-            yMin[k] = defaultY[k] - hStride + tStride * phaseDiff;
-            yMax[k] = yMin[k] + tStride;
-          } else {
-            xMin[k] = defaultX[k] - hStride + tStride * phaseDiff; 
-            xMax[k] = xMin[k] + tStride;
+              xMin[k] = defaultX[k] - hStrafe; // incorporate phase difference
+              xMax[k] = xMin[k] + hStrafe;
 
-            yMin[k] = defaultY[k] - hStrafe + tStrafe * phaseDiff; 
-            yMax[k] = yMin[k] + tStrafe;
+              yMin[k] = defaultY[k] - hStride; // incorporate phase difference
+              yMax[k] = yMin[k] + hStride;
+            } else {
+              Serial.print(" | Phase Diff: " + String(phase_diff));
+              xMin[k] = defaultX[k] - hStride; // incorporate phase difference
+              xMax[k] = xMin[k] + hStride;
+
+              yMin[k] = defaultY[k] - hStrafe; // incorporate phase difference
+              yMax[k] = yMin[k] + hStrafe;
+            }
+          } else if (phase_diff == 2) {
+            if (k == 2 || k == 3) {
+              Serial.print(" | Phase Diff Mid Leg: " + String(phase_diff));
+
+              xMin[k] = defaultX[k]; // incorporate phase difference
+              xMax[k] = xMin[k] + hStrafe;
+
+              yMin[k] = defaultY[k]; // incorporate phase difference
+              yMax[k] = yMin[k] + hStride;
+            } else {
+              Serial.print(" | Phase Diff: " + String(phase_diff));
+              xMin[k] = defaultX[k]; // incorporate phase difference
+              xMax[k] = xMin[k] + hStride;
+
+              yMin[k] = defaultY[k]; // incorporate phase difference
+              yMax[k] = yMin[k] + hStrafe;
+            }
           }
         }
       }
+      Serial.println();
       for (int i = 0; i < increment; i++) {
         if (i <= hInc) {
           zArc[i] = ground + ((clearance / hInc) * i);
@@ -361,20 +497,19 @@ void gaitEngine::move(Gait gait, float stride, float strafe, float yaw, float st
         for (int k = 0; k < 6; k++) {//Calculate difference between start & end x,y coordinates - current increment
           xDiff[k] = (xMin[k] > xMax[k] ? -1 : 1) * (abs(xMin[k] - xMax[k]) / increment) * i;
           yDiff[k] = (yMin[k] > yMax[k] ? -1 : 1) * (abs(yMin[k] - yMax[k]) / increment) * i;
-          if (k == j) {
+          if (k == j || k == j + 3) {
             x[k] = xMin[k] + xDiff[k];
             y[k] = yMin[k] + yDiff[k];
           } else {
             x[k] = xMax[k] - xDiff[k];
             y[k] = yMax[k] - yDiff[k];
           }
-          allLegs[k]->moveLegGlobal(x[k], y[k], (k == j || k == j + 2) ? zArc[i] : ground);
-          Serial.println(String(j) + " " + String(allLegs[k]->getName()) + " " + String(x[k]) + " " + String(y[k]) + " " + String((j == k) ? zArc[i] : ground));
+          allLegs[k]->moveLegGlobal(x[k], y[k], (k == j || k == j + 3) ? zArc[i] : ground);
+          Serial.println(String(j) + " " + String(allLegs[k]->getName()) + " " + String(x[k]) + " " + String(y[k]) + " " + String((k == j || k == j + 3) ? zArc[i] : ground));
         }
 
       }
       j++;
-
       break;
 
     case wave:
@@ -438,6 +573,53 @@ void gaitEngine::move(Gait gait, float stride, float strafe, float yaw, float st
       }
       j++;
       break;
+
+    case test:
+      for (int j = 0; j < 3; j++) {
+        for (int k = 0; k < 6; k ++) {
+          if (j == 0) { //move all legs forward half step
+            xMin[k] = defaultX[k] - hStride;
+            xMax[k] = defaultX[k];
+            yMin[k] = defaultY[k] - hStrafe;
+            yMax[k] = defaultY[k];
+          } else if (j == 1) { // complete forward movement
+            xMin[k] = defaultX[k];
+            xMax[k] = defaultX[k] + hStride;
+            yMin[k] = defaultY[k];
+            yMax[k] = defaultY[k] + hStrafe;
+          } else if (j == 2) { // lift and go all the way back
+            xMin[k] = defaultX[k] - hStride;
+            xMax[k] = defaultX[k] + hStride;
+            yMin[k] = defaultY[k] - hStrafe;
+            yMax[k] = defaultY[k] + hStrafe;
+          }
+        }
+        for (int i = 0; i < increment; i++) {
+          if (i <= hInc) {
+            zArc[i] = ground + ((clearance / hInc) * i);
+          } else {
+            int t = increment - i;
+            zArc[i] = ground + ((clearance / hInc) * t);
+          }
+          float xDiff[6];
+          float yDiff[6];
+          float x[6];
+          float y[6];
+          for (int k = 0; k < 6; k++) {//Calculate difference between start & end x,y coordinates - current increment
+            xDiff[k] = (xMin[k] > xMax[k] ? -1 : 1) * (abs(xMin[k] - xMax[k]) / increment) * i; //calculate absolute difference between two coordinates, if the minimum has a higher value than the maximum - invert it
+            yDiff[k] = (yMin[k] > yMax[k] ? -1 : 1) * (abs(yMin[k] - yMax[k]) / increment) * i;
+            if (j == 0 || j == 1) {
+              x[k] = xMin[k] + xDiff[k];
+              y[k] = yMin[k] + yDiff[k];
+            } else if (j == 2) {
+              x[k] = xMax[k] - xDiff[k];
+              y[k] = yMax[k] - yDiff[k];
+            }
+            allLegs[k]->moveLegGlobal(x[k], y[k], (j == 2) ? zArc[i] : ground);
+          }
+        }
+      }
+      break;
     default:
       return;
       break;
@@ -481,7 +663,7 @@ void gaitEngine::shiftRightLeg(Leg** legs, int size, int shiftAmount) {
   }
 }
 
-void gaitEngine::shiftRight(float* coords, int size, int shiftAmount) {
+void gaitEngine::shiftRight(float * coords, int size, int shiftAmount) {
   for (int s = 0; s < shiftAmount; s++) {
     float temp = coords[size - 1];
     for (int r = size - 1; r > 0; r--) {
@@ -501,7 +683,7 @@ void gaitEngine::shiftLeftLeg(Leg** legs, int size, int shiftAmount) {
   }
 }
 
-void gaitEngine::shiftLeft(float* arr, int size, int shiftAmount) {
+void gaitEngine::shiftLeft(float * arr, int size, int shiftAmount) {
   for (int i = 0; i < shiftAmount; i++) {
     float temp = arr[0];
     for (int j = 0; j < size - 1; j++) {
